@@ -166,6 +166,34 @@ class DataFetcher:
         crypto_data = self.fetch_crypto_data(dates)
         macro_data = self.fetch_macro_data(dates)
 
+        # 크립토 데이터 검증
+        if not crypto_data:
+            raise ValueError(f"❌ TB_CRYPTO_DATA 조회 실패: 7일치 데이터 중 하나도 없음")
+
+        # 매크로 데이터 검증
+        if not macro_data:
+            raise ValueError(f"❌ TB_MACRO_DATA 조회 실패: 7일치 데이터 중 하나도 없음")
+
+        # 두 테이블의 조회된 날짜 비교
+        crypto_dates = set(crypto_data.keys())
+        macro_dates = set(macro_data.keys())
+
+        missing_crypto_dates = set(dates) - crypto_dates
+        missing_macro_dates = set(dates) - macro_dates
+
+        if missing_crypto_dates:
+            print(f"⚠️  TB_CRYPTO_DATA 누락 날짜: {missing_crypto_dates}")
+        if missing_macro_dates:
+            print(f"⚠️  TB_MACRO_DATA 누락 날짜: {missing_macro_dates}")
+
+        # 최소 데이터 요구: 7일 중 최소 5일 이상 필요
+        min_required_days = 5
+        if len(crypto_dates) < min_required_days:
+            raise ValueError(f"❌ TB_CRYPTO_DATA 불충분: {len(crypto_dates)}일/7일 (최소 {min_required_days}일 필요)")
+
+        if len(macro_dates) < min_required_days:
+            raise ValueError(f"❌ TB_MACRO_DATA 불충분: {len(macro_dates)}일/7일 (최소 {min_required_days}일 필요)")
+
         return {
             "date": date_str,
             "crypto": crypto_data,
@@ -177,8 +205,29 @@ class DataFetcher:
         LLM(ChatGPT)에 전달할 형식으로 데이터 포맷팅
         JSON 문자열로 변환하여 프롬프트에 주입 가능하게
         """
-        crypto_str = json.dumps(data["crypto"], indent=2, ensure_ascii=False)
-        macro_str = json.dumps(data["macro"], indent=2, ensure_ascii=False)
+        crypto_data = data.get("crypto", {})
+        macro_data = data.get("macro", {})
+
+        # 필수 필드 검증
+        required_crypto_fields = ["btcPrice", "fearGreedIndex", "longShortRatio", "exchangeBalance", "openInterest"]
+        required_macro_fields = ["interestRate", "cpi", "m2", "dollarIndex"]
+
+        # 각 날짜별 크립토 데이터 검증
+        for date, crypto_item in crypto_data.items():
+            missing_fields = [f for f in required_crypto_fields if f not in crypto_item or crypto_item[f] is None]
+            if missing_fields:
+                raise ValueError(f"❌ TB_CRYPTO_DATA 필수 필드 누락 ({date}): {missing_fields}")
+
+        # 각 날짜별 매크로 데이터 검증
+        for date, macro_item in macro_data.items():
+            missing_fields = [f for f in required_macro_fields if f not in macro_item or macro_item[f] is None]
+            if missing_fields:
+                raise ValueError(f"❌ TB_MACRO_DATA 필수 필드 누락 ({date}): {missing_fields}")
+
+        crypto_str = json.dumps(crypto_data, indent=2, ensure_ascii=False)
+        macro_str = json.dumps(macro_data, indent=2, ensure_ascii=False)
+
+        print(f"✅ 데이터 검증 완료: 크립토 {len(crypto_data)}일, 매크로 {len(macro_data)}일")
 
         return {
             "crypto_data_json": crypto_str,
