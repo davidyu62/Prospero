@@ -10,6 +10,7 @@ import GoogleMobileAds
 
 @main
 struct ProsperoApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @State private var showSplash = true
 
     init() {
