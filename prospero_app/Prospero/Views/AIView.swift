@@ -433,15 +433,22 @@ struct AIDetailedExplanationCard: View {
             }
 
             // 언어 설정에 따라 한국어 또는 영어 설명 선택
-            let explanationData = selectedLanguage == "ENG" ? analysis.indicatorExplanationsEn : analysis.indicatorExplanations
-            let explanations: [(String, String)] = [
-                ("공포탐욕지수", explanationData.fearGreed),
-                ("롱숏비율", explanationData.longShort),
-                ("OI+가격", explanationData.openInterest),
-                ("기준금리", explanationData.interestRate),
-                ("M2통화량", explanationData.m2),
-                ("달러인덱스", explanationData.dollarIndex),
-                ("CPI", explanationData.cpi)
+            let explanations: [(String, String)] = selectedLanguage == "ENG" ? [
+                ("Fear & Greed", analysis.indicatorExplanationsEn.fearGreed),
+                ("Long/Short", analysis.indicatorExplanationsEn.longShort),
+                ("Open Interest", analysis.indicatorExplanationsEn.openInterest),
+                ("Interest Rate", analysis.indicatorExplanationsEn.interestRate),
+                ("M2 Supply", analysis.indicatorExplanationsEn.m2),
+                ("Dollar Index", analysis.indicatorExplanationsEn.dollarIndex),
+                ("CPI", analysis.indicatorExplanationsEn.cpi)
+            ] : [
+                ("공포탐욕지수", analysis.indicatorExplanations.fearGreed),
+                ("롱숏비율", analysis.indicatorExplanations.longShort),
+                ("OI+가격", analysis.indicatorExplanations.openInterest),
+                ("기준금리", analysis.indicatorExplanations.interestRate),
+                ("M2통화량", analysis.indicatorExplanations.m2),
+                ("달러인덱스", analysis.indicatorExplanations.dollarIndex),
+                ("CPI", analysis.indicatorExplanations.cpi)
             ]
 
             VStack(spacing: 10) {
