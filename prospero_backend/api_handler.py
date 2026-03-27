@@ -41,10 +41,18 @@ def lambda_handler(event, context):
         # 경로별 분기
         if "/api/crypto-data/7days" in path:
             return _handle_crypto_7days(date)
+        if "/api/crypto-data/today" in path:
+            return _handle_crypto_today()
         if "/api/crypto-data/db/date-with-previous" in path:
             return _handle_crypto_date_with_previous(date)
+        if "/api/crypto-data/db/date" in path:
+            return _handle_crypto_by_date(date)
+        if "/api/macro-data/today" in path:
+            return _handle_macro_today()
         if "/api/macro-data/db/date-with-previous" in path:
             return _handle_macro_date_with_previous(date)
+        if "/api/macro-data/db/date" in path:
+            return _handle_macro_by_date(date)
         if "/api/ai-analysis/date" in path:
             return _handle_ai_analysis_date(date)
 
@@ -53,6 +61,30 @@ def lambda_handler(event, context):
     except Exception as e:
         print(f"[ERROR] API 처리 실패: {e}")
         return _response(500, {"error": str(e)})
+
+
+def _handle_crypto_today():
+    """오늘의 크립토 데이터"""
+    today = datetime.now().strftime("%Y%m%d")
+    data = get_crypto_data_by_date(today)
+
+    if not data:
+        return _response(404, {"error": "오늘의 크립토 데이터가 없습니다."})
+
+    return _response(200, _crypto_to_item(today, data))
+
+
+def _handle_crypto_by_date(date: str):
+    """특정 날짜의 크립토 데이터"""
+    if not date or len(date) != 8:
+        return _response(400, {"error": "날짜 형식이 올바르지 않습니다. yyyyMMdd 형식으로 입력해주세요."})
+
+    data = get_crypto_data_by_date(date)
+
+    if not data:
+        return _response(404, {"error": f"해당 날짜({date})의 크립토 데이터가 없습니다."})
+
+    return _response(200, _crypto_to_item(date, data))
 
 
 def _handle_crypto_date_with_previous(date: str):
@@ -74,6 +106,30 @@ def _handle_crypto_date_with_previous(date: str):
         },
     }
     return _response(200, body)
+
+
+def _handle_macro_today():
+    """오늘의 매크로 데이터"""
+    today = datetime.now().strftime("%Y%m%d")
+    data = get_macro_data_by_date(today)
+
+    if not data:
+        return _response(404, {"error": "오늘의 매크로 데이터가 없습니다."})
+
+    return _response(200, _macro_to_item(today, data))
+
+
+def _handle_macro_by_date(date: str):
+    """특정 날짜의 매크로 데이터"""
+    if not date or len(date) != 8:
+        return _response(400, {"error": "날짜 형식이 올바르지 않습니다. yyyyMMdd 형식으로 입력해주세요."})
+
+    data = get_macro_data_by_date(date)
+
+    if not data:
+        return _response(404, {"error": f"해당 날짜({date})의 매크로 데이터가 없습니다."})
+
+    return _response(200, _macro_to_item(date, data))
 
 
 def _handle_macro_date_with_previous(date: str):
