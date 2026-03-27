@@ -1,0 +1,26 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Xcode
+*.xcuserstate
+xcuserdata/
+DerivedData/
+*.moved-aside
+*.xccheckout
+*.xcscmblueprint
+build/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+*.zip
+venv/
+.venv/
+
+# AWS / Secrets
+.env.local
+*.pem
