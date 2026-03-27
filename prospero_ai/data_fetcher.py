@@ -2,7 +2,7 @@
 # data_fetcher.py
 # Prospero AI
 #
-# DynamoDB에서 최근 7일치 암호화폐 및 거시경제 데이터를 조회
+# DynamoDB에서 최근 30일치 암호화폐 및 거시경제 데이터를 조회
 
 import boto3
 import json
@@ -15,7 +15,7 @@ class DataFetcher:
         self.crypto_table = "TB_CRYPTO_DATA"
         self.macro_table = "TB_MACRO_DATA"
 
-    def generate_date_list(self, end_date: str, days: int = 7) -> list:
+    def generate_date_list(self, end_date: str, days: int = 30) -> list:
         """
         날짜 문자열(yyyyMMdd)에서 역순으로 N일치 날짜 생성
         예: "20250304"에서 시작하면 ["20250304", "20250303", ..., "20250226"]
@@ -52,23 +52,22 @@ class DataFetcher:
                     item = items[0]
                     date_str = item["date"]["S"]
                     crypto_data[date_str] = self._parse_dynamodb_item(item)
-                    continue
+                else:
+                    # Scan 폴백: Query가 결과를 못 찾으면 Scan으로 date 필터
+                    response = self.dynamodb.scan(
+                        TableName=self.crypto_table,
+                        FilterExpression="#date = :date",
+                        ExpressionAttributeNames={"#date": "date"},
+                        ExpressionAttributeValues={":date": {"S": date}},
+                        Limit=100
+                    )
 
-                # Scan 폴백: Query가 결과를 못 찾으면 Scan으로 date 필터
-                response = self.dynamodb.scan(
-                    TableName=self.crypto_table,
-                    FilterExpression="#date = :date",
-                    ExpressionAttributeNames={"#date": "date"},
-                    ExpressionAttributeValues={":date": {"S": date}},
-                    Limit=100
-                )
-
-                items = response.get("Items", [])
-                if items:
-                    # timestamps 기준 최신 1건
-                    latest = max(items, key=lambda x: x.get("timestamps", {}).get("S", ""))
-                    date_str = latest["date"]["S"]
-                    crypto_data[date_str] = self._parse_dynamodb_item(latest)
+                    items = response.get("Items", [])
+                    if items:
+                        # timestamps 기준 최신 1건
+                        latest = max(items, key=lambda x: x.get("timestamps", {}).get("S", ""))
+                        date_str = latest["date"]["S"]
+                        crypto_data[date_str] = self._parse_dynamodb_item(latest)
 
             except Exception as e:
                 print(f"⚠️  {date} 크립토 데이터 조회 실패: {e}")
@@ -103,23 +102,22 @@ class DataFetcher:
                     item = items[0]
                     date_str = item["date"]["S"]
                     macro_data[date_str] = self._parse_dynamodb_item(item)
-                    continue
+                else:
+                    # Scan 폴백: Query가 결과를 못 찾으면 Scan으로 date 필터
+                    response = self.dynamodb.scan(
+                        TableName=self.macro_table,
+                        FilterExpression="#date = :date",
+                        ExpressionAttributeNames={"#date": "date"},
+                        ExpressionAttributeValues={":date": {"S": date}},
+                        Limit=100
+                    )
 
-                # Scan 폴백: Query가 결과를 못 찾으면 Scan으로 date 필터
-                response = self.dynamodb.scan(
-                    TableName=self.macro_table,
-                    FilterExpression="#date = :date",
-                    ExpressionAttributeNames={"#date": "date"},
-                    ExpressionAttributeValues={":date": {"S": date}},
-                    Limit=100
-                )
-
-                items = response.get("Items", [])
-                if items:
-                    # timestamps 기준 최신 1건
-                    latest = max(items, key=lambda x: x.get("timestamps", {}).get("S", ""))
-                    date_str = latest["date"]["S"]
-                    macro_data[date_str] = self._parse_dynamodb_item(latest)
+                    items = response.get("Items", [])
+                    if items:
+                        # timestamps 기준 최신 1건
+                        latest = max(items, key=lambda x: x.get("timestamps", {}).get("S", ""))
+                        date_str = latest["date"]["S"]
+                        macro_data[date_str] = self._parse_dynamodb_item(latest)
 
             except Exception as e:
                 print(f"⚠️  {date} 거시경제 데이터 조회 실패: {e}")
@@ -131,7 +129,7 @@ class DataFetcher:
 
     def _parse_dynamodb_item(self, item: Dict) -> Dict:
         """
-        DynamoDB 형식 {S: "value", N: "number"} → Python dict 변환
+        DynamoDB 형식 {S, N, NULL, BOOL, M, L, SS, NS, BS} → Python dict 변환
         """
         result = {}
         for key, value in item.items():
@@ -144,11 +142,30 @@ class DataFetcher:
                     result[key] = float(num_str)
                 else:
                     result[key] = int(num_str)
+            elif "NULL" in value:
+                result[key] = None
+            elif "BOOL" in value:
+                result[key] = value["BOOL"]
+            elif "M" in value:
+                # Map 타입 재귀 처리
+                result[key] = self._parse_dynamodb_item(value["M"])
+            elif "L" in value:
+                # List 타입 처리
+                result[key] = [self._parse_dynamodb_item({"v": item})["v"] for item in value["L"]]
+            elif "SS" in value:
+                # String Set
+                result[key] = set(value["SS"])
+            elif "NS" in value:
+                # Number Set
+                result[key] = {float(n) if "." in n else int(n) for n in value["NS"]}
+            elif "BS" in value:
+                # Binary Set
+                result[key] = set(value["BS"])
         return result
 
-    def get_7day_data(self, date_str: str) -> Dict[str, any]:
+    def get_30day_data(self, date_str: str) -> Dict[str, any]:
         """
-        주어진 날짜 기준 최근 7일치 크립토 및 거시경제 데이터 조회
+        주어진 날짜 기준 최근 30일치 크립토 및 거시경제 데이터 조회
 
         Args:
             date_str: "yyyyMMdd" 형식의 날짜 문자열
@@ -160,7 +177,7 @@ class DataFetcher:
                 "macro": {date: {...}, ...}
             }
         """
-        dates = self.generate_date_list(date_str, days=7)
+        dates = self.generate_date_list(date_str, days=30)
         print(f"🔍 조회 대상 날짜: {dates}")
 
         crypto_data = self.fetch_crypto_data(dates)
@@ -168,11 +185,11 @@ class DataFetcher:
 
         # 크립토 데이터 검증
         if not crypto_data:
-            raise ValueError(f"❌ TB_CRYPTO_DATA 조회 실패: 7일치 데이터 중 하나도 없음")
+            raise ValueError(f"❌ TB_CRYPTO_DATA 조회 실패: 30일치 데이터 중 하나도 없음")
 
         # 매크로 데이터 검증
         if not macro_data:
-            raise ValueError(f"❌ TB_MACRO_DATA 조회 실패: 7일치 데이터 중 하나도 없음")
+            raise ValueError(f"❌ TB_MACRO_DATA 조회 실패: 30일치 데이터 중 하나도 없음")
 
         # 두 테이블의 조회된 날짜 비교
         crypto_dates = set(crypto_data.keys())
@@ -186,13 +203,13 @@ class DataFetcher:
         if missing_macro_dates:
             print(f"⚠️  TB_MACRO_DATA 누락 날짜: {missing_macro_dates}")
 
-        # 최소 데이터 요구: 7일 중 최소 5일 이상 필요
-        min_required_days = 5
+        # 최소 데이터 요구: 30일 중 최소 20일 이상 필요
+        min_required_days = 20
         if len(crypto_dates) < min_required_days:
-            raise ValueError(f"❌ TB_CRYPTO_DATA 불충분: {len(crypto_dates)}일/7일 (최소 {min_required_days}일 필요)")
+            raise ValueError(f"❌ TB_CRYPTO_DATA 불충분: {len(crypto_dates)}일/30일 (최소 {min_required_days}일 필요)")
 
         if len(macro_dates) < min_required_days:
-            raise ValueError(f"❌ TB_MACRO_DATA 불충분: {len(macro_dates)}일/7일 (최소 {min_required_days}일 필요)")
+            raise ValueError(f"❌ TB_MACRO_DATA 불충분: {len(macro_dates)}일/30일 (최소 {min_required_days}일 필요)")
 
         return {
             "date": date_str,
@@ -209,8 +226,8 @@ class DataFetcher:
         macro_data = data.get("macro", {})
 
         # 필수 필드 검증
-        required_crypto_fields = ["btcPrice", "fearGreedIndex", "longShortRatio", "exchangeBalance", "openInterest"]
-        required_macro_fields = ["interestRate", "cpi", "m2", "dollarIndex"]
+        required_crypto_fields = ["btcPrice", "fearGreedIndex", "longShortRatio", "openInterest"]
+        required_macro_fields = ["interestRate", "treasury10y", "cpi", "m2", "unemployment", "dollarIndex"]
 
         # 각 날짜별 크립토 데이터 검증
         for date, crypto_item in crypto_data.items():
