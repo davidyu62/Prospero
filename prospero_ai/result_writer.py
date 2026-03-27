@@ -132,7 +132,7 @@ class ResultWriter:
                 result[key] = self._parse_dynamodb_item(value["M"])
             elif "L" in value:
                 # List 타입 처리
-                result[key] = [self._parse_dynamodb_item({"v": item})[\"v\"] for item in value["L"]]
+                result[key] = [self._parse_dynamodb_item({"v": item})["v"] for item in value["L"]]
             elif "SS" in value:
                 # String Set
                 result[key] = set(value["SS"])
