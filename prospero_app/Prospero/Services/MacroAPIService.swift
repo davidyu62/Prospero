@@ -10,7 +10,7 @@ import Foundation
 class MacroAPIService {
     static let shared = MacroAPIService()
     
-    private let baseURL = "https://yjyjxewr8c.execute-api.ap-northeast-2.amazonaws.com/prod"
+    private let baseURL = "https://nocc6zkfqkzt46smrf4sekau7i0efrze.lambda-url.ap-northeast-2.on.aws"
     
     private init() {}
     
