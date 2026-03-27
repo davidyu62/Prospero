@@ -9,7 +9,7 @@ import Foundation
 class AIAnalysisAPIService {
     static let shared = AIAnalysisAPIService()
 
-    private let baseURL = "https://nocc6zkfqkzt46smrf4sekau7i0efrze.lambda-url.ap-northeast-2.on.aws"
+    private let baseURL = "https://n84fir7sq6.execute-api.ap-northeast-2.amazonaws.com/prod"
 
     private init() {}
 
