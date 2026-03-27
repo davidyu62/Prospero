@@ -428,6 +428,11 @@ struct AIDetailedExplanationCard: View {
     let analysis: AIAnalysisResponse
     @State private var expandedIndex: Int? = nil
 
+    private var localization: Localization {
+        Localization.shared.language = selectedLanguage
+        return Localization.shared
+    }
+
     var body: some View {
         VStack(spacing: 12) {
             HStack {
