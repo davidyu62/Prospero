@@ -23,20 +23,23 @@ CORS_HEADERS = {
 
 def lambda_handler(event, context):
     """
-    API Gateway Lambda Proxy Integration
-    event: { httpMethod, path, queryStringParameters }
+    API Gateway Lambda Proxy Integration + Lambda URL
+    API Gateway: { httpMethod, path, queryStringParameters }
+    Lambda URL: { requestContext.http.{method, path}, queryStringParameters }
     """
     try:
-        # CORS preflight
-        if event.get("httpMethod") == "OPTIONS":
-            return _response(200, {})
-
-        path = event.get("path", "")
+        # API Gateway와 Lambda URL 두 형식 모두 지원
+        http_method = event.get("httpMethod") or event.get("requestContext", {}).get("http", {}).get("method", "")
+        path = event.get("path") or event.get("requestContext", {}).get("http", {}).get("path", "")
         params = event.get("queryStringParameters") or {}
         date = params.get("date")
 
+        # CORS preflight
+        if http_method == "OPTIONS":
+            return _response(200, {})
+
         # DEBUG
-        print(f"[DEBUG] path={path}, date={date}, httpMethod={event.get('httpMethod')}")
+        print(f"[DEBUG] path={path}, date={date}, httpMethod={http_method}")
 
         # 경로별 분기
         if "/api/crypto-data/7days" in path:
