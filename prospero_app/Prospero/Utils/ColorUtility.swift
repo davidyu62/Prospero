@@ -85,8 +85,12 @@ struct ColorUtility {
             return Color(red: 0.20, green: 0.95, blue: 0.40)  // 밝은 초록
         } else if percentage >= 2.0 {
             return .successColor  // 중간 초록
+        } else if percentage > 0 {
+            return Color(red: 0.40, green: 0.85, blue: 0.50)  // 밝은 초록 (소폭 상승)
+        } else if percentage == 0 {
+            return Color(red: 0.70, green: 0.70, blue: 0.70)  // 회색 (변화 없음)
         } else if percentage > -2.0 {
-            return Color(red: 0.70, green: 0.70, blue: 0.70)  // 회색
+            return Color(red: 1.0, green: 0.50, blue: 0.50)   // 밝은 빨강 (소폭 하락)
         } else if percentage >= -5.0 {
             return Color(red: 1.0, green: 0.60, blue: 0.60)   // 중간 빨강
         } else {
