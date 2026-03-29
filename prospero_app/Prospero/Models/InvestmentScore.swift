@@ -64,14 +64,12 @@ struct IndicatorExplanationsEn: Codable {
     }
 }
 
-// MARK: - AI 분석 응답 모델 (v2.0)
+// MARK: - AI 분석 응답 모델 (v3.0 - LLM 자유 판단 방식)
 struct AIAnalysisResponse: Codable {
     let date: String
     let totalScore: Double
     let signalType: String
     let signalColor: String
-    let cryptoScore: Double
-    let macroScore: Double
     let btcTrendScore: Double
     let fearGreedScore: Double
     let longShortScore: Double
@@ -93,8 +91,6 @@ struct AIAnalysisResponse: Codable {
         case totalScore = "total_score"
         case signalType = "signal_type"
         case signalColor = "signal_color"
-        case cryptoScore = "crypto_score"
-        case macroScore = "macro_score"
         case btcTrendScore = "btc_trend_score"
         case fearGreedScore = "fear_greed_score"
         case longShortScore = "long_short_score"

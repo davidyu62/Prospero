@@ -48,16 +48,17 @@ class ResultWriter:
             # 파티션 키
             "date": {"S": date},
 
-            # 점수
+            # 종합 점수 (v4.0)
             "total_score": {"N": str(analysis_result["total_score"])},
-            "crypto_score": {"N": str(analysis_result["crypto_score"])},
-            "macro_score": {"N": str(analysis_result["macro_score"])},
+            "base_score": {"N": str(analysis_result["base_score"])},
+            "regime": {"S": analysis_result["regime"]},
+            "regime_adjustment": {"N": str(analysis_result["regime_adjustment"])},
 
             # 신호
             "signal_type": {"S": analysis_result["signal_type"]},
             "signal_color": {"S": analysis_result["signal_color"]},
 
-            # 지표별 점수 (v2.0)
+            # 지표별 점수 (v4.0 - 11개 지표)
             "btc_trend_score": {"N": str(analysis_result["btc_trend_score"])},
             "fear_greed_score": {"N": str(analysis_result["fear_greed_score"])},
             "long_short_score": {"N": str(analysis_result["long_short_score"])},

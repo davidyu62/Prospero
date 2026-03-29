@@ -545,11 +545,11 @@ struct FearGreedCard: View {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text("\(data.value)")
                     .font(.system(size: 36, weight: .bold))
-                    .foregroundColor(theme.primaryText)
+                    .foregroundColor(colorForFearGreed(data.value))
 
                 Text(localization.cryptoMetric(data.label))
                     .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.successColor)
+                    .foregroundColor(colorForFearGreed(data.value))
             }
 
             // Fear & Greed Scale
@@ -632,6 +632,24 @@ struct FearGreedCard: View {
             y: 4
         )
     }
+
+    // 공포탐욕지수에 따른 색깔
+    private func colorForFearGreed(_ value: Int) -> Color {
+        switch value {
+        case 0...20:
+            return .dangerColor  // 극도의 공포 (빨강)
+        case 21...40:
+            return .warningColor  // 공포 (주황)
+        case 41...60:
+            return .yellow  // 중립 (노랑)
+        case 61...80:
+            return .successColor.opacity(0.7)  // 탐욕 (연두)
+        case 81...100:
+            return .successColor  // 극도의 탐욕 (초록)
+        default:
+            return theme.primaryText
+        }
+    }
 }
 
 // MARK: - Metric Card
@@ -670,8 +688,14 @@ struct MetricCard: View {
             Spacer()
             
             VStack(alignment: .trailing, spacing: 4) {
+                // 값과 단위 분리 (예: "94762.48M BTC" → "94762.48M" + "BTC")
+                let valueParts = metric.value.split(separator: " ", maxSplits: 1)
+                let numberPart = String(valueParts.first ?? "")
+                let unitPart = valueParts.count > 1 ? String(valueParts.last ?? "") : ""
+
+                // 위: 숫자와 화살표
                 HStack(spacing: 4) {
-                    Text(metric.value)
+                    Text(numberPart)
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(theme.primaryText)
 
@@ -680,14 +704,19 @@ struct MetricCard: View {
                         .foregroundColor(theme.tertiaryText)
                 }
 
-                if let change = metric.change, let isPositive = metric.changeIsPositive {
-                    Text(change)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(colorForChangeValue(change, isPositive: isPositive))
-                } else if let change = metric.change {
-                    Text(change)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(theme.secondaryText)
+                // 아래: 단위와 변화율
+                HStack(spacing: 8) {
+                    if !unitPart.isEmpty {
+                        Text(unitPart)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(theme.secondaryText)
+                    }
+
+                    if let change = metric.change {
+                        Text(change)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(colorForChangeValue(change, isPositive: metric.changeIsPositive ?? (change.contains("+") || change.contains("▲"))))
+                    }
                 }
             }
         }

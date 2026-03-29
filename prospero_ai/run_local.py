@@ -35,10 +35,10 @@ def main():
 
     try:
         # 1. 데이터 조회
-        print("📥 Step 1: DynamoDB에서 7일치 데이터 조회")
+        print("📥 Step 1: DynamoDB에서 30일치 데이터 조회")
         print("-" * 60)
         fetcher = DataFetcher()
-        raw_data = fetcher.get_7day_data(test_date)
+        raw_data = fetcher.get_30day_data(test_date)
 
         # 크립토 데이터 미리보기
         if raw_data["crypto"]:
@@ -87,17 +87,22 @@ def main():
         print("-" * 60)
         print(f"✅ 총점: {analysis_result['total_score']:.1f}/100")
         print(f"✅ 신호: {analysis_result['signal_type']} ({analysis_result['signal_color']})")
-        print(f"✅ 크립토 지표: {analysis_result['crypto_score']:.1f}/60")
-        print(f"✅ 매크로 지표: {analysis_result['macro_score']:.1f}/40")
-        print(f"\n지표별 점수:")
-        print(f"  - 공포탐욕지수: {analysis_result['fear_greed_score']:.1f}/25")
-        print(f"  - 롱숏비율: {analysis_result['long_short_score']:.1f}/15")
-        print(f"  - 거래소잔고: {analysis_result['exchange_balance_score']:.1f}/10")
-        print(f"  - OI+가격: {analysis_result['open_interest_score']:.1f}/10")
-        print(f"  - 기준금리: {analysis_result['interest_rate_score']:.1f}/15")
-        print(f"  - M2: {analysis_result['m2_score']:.1f}/10")
-        print(f"  - 달러인덱스: {analysis_result['dollar_index_score']:.1f}/10")
-        print(f"  - CPI: {analysis_result['cpi_score']:.1f}/5")
+        print(f"✅ 기본점수: {analysis_result['base_score']:.1f}/100")
+        print(f"✅ 시장국면(Regime): {analysis_result['regime']}")
+        print(f"✅ 국면 조정: {analysis_result['regime_adjustment']:+.1f}점")
+        print(f"✅ 상호작용 점수: {analysis_result['interaction_score']:+.1f}점")
+        print(f"\n지표별 점수 (11개):")
+        print(f"  - BTC 추세: {analysis_result['btc_trend_score']:.2f}/10")
+        print(f"  - 공포탐욕지수: {analysis_result['fear_greed_score']:.2f}/20")
+        print(f"  - 롱숏비율: {analysis_result['long_short_score']:.2f}/15")
+        print(f"  - OI+가격: {analysis_result['open_interest_score']:.2f}/10")
+        print(f"  - 기준금리: {analysis_result['interest_rate_score']:.2f}/10")
+        print(f"  - 10년물금리: {analysis_result['treasury10y_score']:.2f}/8")
+        print(f"  - M2: {analysis_result['m2_score']:.2f}/8")
+        print(f"  - 달러인덱스: {analysis_result['dollar_index_score']:.2f}/7")
+        print(f"  - 실업률: {analysis_result['unemployment_score']:.2f}/4")
+        print(f"  - CPI: {analysis_result['cpi_score']:.2f}/3")
+        print(f"  - 상호작용: {analysis_result['interaction_score']:.2f}/5")
         print(f"\n종합 분석:")
         print(f"  {analysis_result['analysis_summary']}")
 

@@ -81,13 +81,10 @@ struct AIView: View {
                         .padding(.vertical, 60)
                     } else if let analysis = analysis {
                         VStack(spacing: 20) {
-                            // 1. 메인 점수 카드
+                            // 메인 점수 카드 (총점 및 신호)
                             AIMainScoreCard(analysis: analysis)
 
-                            // 2. 신호 요약
-                            AISignalSummaryCard(analysis: analysis)
-
-                            // 3. 지표 분석 (원시값)
+                            // 지표 분석 (원시값)
                             if let crypto = cryptoData, let macro = macroData {
                                 AIIndicatorCard(crypto: crypto, macro: macro)
                             }
@@ -246,133 +243,6 @@ struct AIMainScoreCard: View {
     }
 }
 
-// MARK: - 신호 요약 카드
-struct AISignalSummaryCard: View {
-    @EnvironmentObject var theme: ThemeManager
-    @AppStorage("selectedLanguage") private var selectedLanguage: String = "ENG"
-    let analysis: AIAnalysisResponse
-
-    private var localization: Localization {
-        Localization.shared.language = selectedLanguage
-        return Localization.shared
-    }
-
-    var body: some View {
-        VStack(spacing: 12) {
-            HStack {
-                Text(localization.ai("Score Summary"))
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(theme.secondaryText)
-
-                Spacer()
-            }
-
-            HStack(spacing: 12) {
-                // 크립토 점수
-                ScorePill(
-                    label: "Crypto",
-                    score: analysis.cryptoScore,
-                    maxScore: 60,
-                    color: Color(red: 0.2, green: 0.8, blue: 0.4)
-                )
-
-                // 매크로 점수
-                ScorePill(
-                    label: "Macro",
-                    score: analysis.macroScore,
-                    maxScore: 40,
-                    color: Color(red: 0.4, green: 0.6, blue: 1.0)
-                )
-
-                Spacer()
-            }
-        }
-        .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: theme.buttonCornerRadius)
-                .fill(theme.cardBackground)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: theme.buttonCornerRadius)
-                .stroke(theme.cardBorderColor, lineWidth: 1)
-        )
-        .shadow(
-            color: theme.cardShadow,
-            radius: 12,
-            x: 0,
-            y: 4
-        )
-    }
-}
-
-// MARK: - 점수 분석 카드
-struct AIScoreAnalysisCard: View {
-    @EnvironmentObject var theme: ThemeManager
-    @AppStorage("selectedLanguage") private var selectedLanguage: String = "ENG"
-    let analysis: AIAnalysisResponse
-
-    let indicators: [(String, Double, Double, Color)] = []
-
-    private var localization: Localization {
-        Localization.shared.language = selectedLanguage
-        return Localization.shared
-    }
-
-    var body: some View {
-        VStack(spacing: 16) {
-            HStack {
-                Text(localization.ai("Market Indicators"))
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(theme.secondaryText)
-
-                Spacer()
-            }
-
-            VStack(spacing: 12) {
-                // 크립토 지표
-                IndicatorGroup(
-                    title: localization.ai("Crypto Indicators"),
-                    indicators: [
-                        (localization.ai("Fear & Greed"), analysis.fearGreedScore, 25),
-                        (localization.ai("Long/Short Ratio"), analysis.longShortScore, 15),
-                        (localization.ai("OI + Price"), analysis.openInterestScore, 10)
-                    ],
-                    theme: theme
-                )
-
-                Divider()
-                    .foregroundColor(theme.cardBackground)
-
-                // 매크로 지표
-                IndicatorGroup(
-                    title: localization.ai("Macro Indicators"),
-                    indicators: [
-                        (localization.ai("Interest Rate"), analysis.interestRateScore, 15),
-                        (localization.ai("M2 Supply"), analysis.m2Score, 10),
-                        (localization.ai("Dollar Index"), analysis.dollarIndexScore, 10),
-                        (localization.ai("CPI"), analysis.cpiScore, 5)
-                    ],
-                    theme: theme
-                )
-            }
-            .padding(16)
-            .background(
-                RoundedRectangle(cornerRadius: theme.buttonCornerRadius)
-                    .fill(theme.cardBackground)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: theme.buttonCornerRadius)
-                    .stroke(theme.cardBorderColor, lineWidth: 1)
-            )
-            .shadow(
-                color: theme.cardShadow,
-                radius: 12,
-                x: 0,
-                y: 4
-            )
-        }
-    }
-}
 
 // MARK: - 지표 그룹
 struct IndicatorGroup: View {
@@ -449,16 +319,20 @@ struct AIDetailedExplanationCard: View {
                 (localization.ai("Long/Short Ratio"), analysis.indicatorExplanationsEn.longShort),
                 (localization.ai("Open Interest"), analysis.indicatorExplanationsEn.openInterest),
                 (localization.ai("Interest Rate"), analysis.indicatorExplanationsEn.interestRate),
+                (localization.ai("Treasury 10Y"), analysis.indicatorExplanationsEn.treasury10y),
                 (localization.ai("M2 Supply"), analysis.indicatorExplanationsEn.m2),
                 (localization.ai("Dollar Index"), analysis.indicatorExplanationsEn.dollarIndex),
+                (localization.ai("Unemployment"), analysis.indicatorExplanationsEn.unemployment),
                 (localization.ai("CPI"), analysis.indicatorExplanationsEn.cpi)
             ] : [
                 (localization.ai("Fear & Greed"), analysis.indicatorExplanations.fearGreed),
                 (localization.ai("Long/Short Ratio"), analysis.indicatorExplanations.longShort),
                 (localization.ai("OI + Price"), analysis.indicatorExplanations.openInterest),
                 (localization.ai("Interest Rate"), analysis.indicatorExplanations.interestRate),
+                (localization.ai("Treasury 10Y"), analysis.indicatorExplanations.treasury10y),
                 (localization.ai("M2 Supply"), analysis.indicatorExplanations.m2),
                 (localization.ai("Dollar Index"), analysis.indicatorExplanations.dollarIndex),
+                (localization.ai("Unemployment"), analysis.indicatorExplanations.unemployment),
                 (localization.ai("CPI"), analysis.indicatorExplanations.cpi)
             ]
 
@@ -612,8 +486,10 @@ struct AIIndicatorCard: View {
                     title: localization.ai("Macro Indicators"),
                     indicators: [
                         (localization.ai("Interest Rate"), macro.interestRate.map { String(format: "%.2f", $0) } ?? "N/A", "%"),
+                        (localization.ai("Treasury 10Y"), macro.treasury10y.map { String(format: "%.2f", $0) } ?? "N/A", "%"),
                         (localization.ai("M2 Supply"), macro.m2.map { String(format: "%.0f", $0 / 1000) } ?? "N/A", selectedLanguage == "ENG" ? "billion USD" : "조 USD"),
                         (localization.ai("Dollar Index"), macro.dollarIndex.map { String(format: "%.2f", $0) } ?? "N/A", ""),
+                        (localization.ai("Unemployment"), macro.unemployment.map { String(format: "%.2f", $0) } ?? "N/A", "%"),
                         (localization.ai("CPI"), macro.cpi.map { String(format: "%.2f", $0 / 100) } ?? "N/A", "%")
                     ],
                     theme: theme,
