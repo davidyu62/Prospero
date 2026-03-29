@@ -89,6 +89,9 @@ struct AIView: View {
                                 AIIndicatorCard(crypto: crypto, macro: macro)
                             }
 
+                            // 지표별 상세 설명
+                            AIDetailedExplanationCard(analysis: analysis)
+
                             Spacer()
                                 .frame(height: 20)
                         }
@@ -315,6 +318,7 @@ struct AIDetailedExplanationCard: View {
 
             // 언어 설정에 따라 한국어 또는 영어 설명 선택
             let explanations: [(String, String)] = selectedLanguage == "ENG" ? [
+                (localization.ai("BTC Trend"), analysis.indicatorExplanationsEn.btcTrend),
                 (localization.ai("Fear & Greed"), analysis.indicatorExplanationsEn.fearGreed),
                 (localization.ai("Long/Short Ratio"), analysis.indicatorExplanationsEn.longShort),
                 (localization.ai("Open Interest"), analysis.indicatorExplanationsEn.openInterest),
@@ -323,8 +327,10 @@ struct AIDetailedExplanationCard: View {
                 (localization.ai("M2 Supply"), analysis.indicatorExplanationsEn.m2),
                 (localization.ai("Dollar Index"), analysis.indicatorExplanationsEn.dollarIndex),
                 (localization.ai("Unemployment"), analysis.indicatorExplanationsEn.unemployment),
-                (localization.ai("CPI"), analysis.indicatorExplanationsEn.cpi)
+                (localization.ai("CPI"), analysis.indicatorExplanationsEn.cpi),
+                (localization.ai("Interaction"), analysis.indicatorExplanationsEn.interaction)
             ] : [
+                (localization.ai("BTC Trend"), analysis.indicatorExplanations.btcTrend),
                 (localization.ai("Fear & Greed"), analysis.indicatorExplanations.fearGreed),
                 (localization.ai("Long/Short Ratio"), analysis.indicatorExplanations.longShort),
                 (localization.ai("OI + Price"), analysis.indicatorExplanations.openInterest),
@@ -333,7 +339,8 @@ struct AIDetailedExplanationCard: View {
                 (localization.ai("M2 Supply"), analysis.indicatorExplanations.m2),
                 (localization.ai("Dollar Index"), analysis.indicatorExplanations.dollarIndex),
                 (localization.ai("Unemployment"), analysis.indicatorExplanations.unemployment),
-                (localization.ai("CPI"), analysis.indicatorExplanations.cpi)
+                (localization.ai("CPI"), analysis.indicatorExplanations.cpi),
+                (localization.ai("Interaction"), analysis.indicatorExplanations.interaction)
             ]
 
             VStack(spacing: 10) {
