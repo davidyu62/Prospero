@@ -84,6 +84,9 @@ struct AIView: View {
                             // 메인 점수 카드 (총점 및 신호)
                             AIMainScoreCard(analysis: analysis)
 
+                            // 신호 범례
+                            AISignalLegendCard()
+
                             // 지표 분석 (원시값)
                             if let crypto = cryptoData, let macro = macroData {
                                 AIIndicatorCard(crypto: crypto, macro: macro)
@@ -243,6 +246,104 @@ struct AIMainScoreCard: View {
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
+    }
+}
+
+// MARK: - 신호 범례
+struct AISignalLegendCard: View {
+    @EnvironmentObject var theme: ThemeManager
+    @AppStorage("selectedLanguage") private var selectedLanguage: String = "ENG"
+
+    private var localization: Localization {
+        Localization.shared.language = selectedLanguage
+        return Localization.shared
+    }
+
+    var body: some View {
+        VStack(spacing: 12) {
+            HStack {
+                Text(selectedLanguage == "ENG" ? "Signal Legend" : "신호 범례")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(theme.secondaryText)
+
+                Spacer()
+            }
+
+            VStack(spacing: 8) {
+                SignalLegendRow(
+                    signal: "Strong Buy",
+                    range: selectedLanguage == "ENG" ? "75-100" : "75-100점",
+                    color: Color(red: 0.0, green: 0.8, blue: 0.2)
+                )
+
+                SignalLegendRow(
+                    signal: selectedLanguage == "ENG" ? "Buy" : "매수",
+                    range: selectedLanguage == "ENG" ? "58-74" : "58-74점",
+                    color: Color(red: 0.2, green: 0.8, blue: 0.4)
+                )
+
+                SignalLegendRow(
+                    signal: selectedLanguage == "ENG" ? "Hold" : "보유",
+                    range: selectedLanguage == "ENG" ? "38-57" : "38-57점",
+                    color: Color(red: 1.0, green: 0.8, blue: 0.0)
+                )
+
+                SignalLegendRow(
+                    signal: selectedLanguage == "ENG" ? "Partial Sell" : "부분매도",
+                    range: selectedLanguage == "ENG" ? "22-37" : "22-37점",
+                    color: Color(red: 1.0, green: 0.6, blue: 0.0)
+                )
+
+                SignalLegendRow(
+                    signal: selectedLanguage == "ENG" ? "Strong Sell" : "강력매도",
+                    range: selectedLanguage == "ENG" ? "0-21" : "0-21점",
+                    color: Color(red: 1.0, green: 0.2, blue: 0.2)
+                )
+            }
+            .padding(12)
+            .background(theme.cardIconBackground)
+            .cornerRadius(8)
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: theme.cardCornerRadius)
+                .fill(theme.cardBackground)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: theme.cardCornerRadius)
+                .stroke(theme.cardBorderColor, lineWidth: 1)
+        )
+        .shadow(
+            color: theme.cardShadow,
+            radius: 12,
+            x: 0,
+            y: 4
+        )
+    }
+}
+
+// MARK: - 신호 범례 행
+struct SignalLegendRow: View {
+    let signal: String
+    let range: String
+    let color: Color
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Circle()
+                .fill(color)
+                .frame(width: 12, height: 12)
+
+            Text(signal)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(.white)
+                .frame(width: 90, alignment: .leading)
+
+            Text(range)
+                .font(.system(size: 11, weight: .regular))
+                .foregroundColor(Color.white.opacity(0.7))
+                .frame(maxWidth: .infinity, alignment: .trailing)
+        }
     }
 }
 
