@@ -59,22 +59,6 @@ struct CryptoDashboardView: View {
                                         }
                                         
                                         Spacer()
-                                        
-                                        // Refresh Button
-                                        Button(action: {
-                                            Task {
-                                                await loadCryptoData()
-                                            }
-                                        }) {
-                                            Image(systemName: "arrow.clockwise")
-                                                .font(.system(size: 18, weight: .medium))
-                                                .foregroundColor(theme.secondaryText)
-                                                .frame(width: 36, height: 36)
-                                                .background(
-                                        Circle()
-                                            .fill(theme.cardIconBackground)
-                                                )
-                                        }
                                     }
                                     
                                     // Bottom Row: Updated Time

@@ -68,11 +68,14 @@ def lambda_handler(event, context):
         return response
 
     except Exception as e:
+        import traceback
         print(f"❌ 오류 발생: {e}")
+        print(traceback.format_exc())
         return {
             "statusCode": 500,
             "body": json.dumps({
-                "error": str(e)
+                "error": str(e),
+                "traceback": traceback.format_exc()
             }, ensure_ascii=False)
         }
 
