@@ -414,7 +414,7 @@ struct AIDetailedExplanationCard: View {
     var body: some View {
         VStack(spacing: 12) {
             HStack {
-                Text("지표 설명")
+                Text(selectedLanguage == "ENG" ? "Indicator Explanations" : "지표 설명")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(theme.secondaryText)
 
@@ -516,6 +516,10 @@ struct ExplanationRow: View {
         .padding(12)
         .background(theme.cardIconBackground)
         .cornerRadius(8)
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(theme.cardBorderColor, lineWidth: 1)
+        )
     }
 }
 
