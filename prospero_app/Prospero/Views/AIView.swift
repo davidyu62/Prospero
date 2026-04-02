@@ -87,6 +87,9 @@ struct AIView: View {
                             // 신호 범례
                             AISignalLegendCard()
 
+                            // 연결 해석 분석 (v5.0)
+                            AICrossIndicatorAnalysisCard(analysis: analysis)
+
                             // 지표 분석 (원시값)
                             if let crypto = cryptoData, let macro = macroData {
                                 AIIndicatorCard(crypto: crypto, macro: macro)
@@ -198,12 +201,12 @@ struct AIMainScoreCard: View {
             }
 
             VStack(alignment: .leading, spacing: 8) {
-                Text(localization.ai("Investment Signal Analysis"))
+                Text(localization.ai("Cross-Indicator Analysis"))
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(theme.secondaryText)
 
-                // 분석 요약 (언어 설정에 따라 선택)
-                Text(selectedLanguage == "ENG" ? analysis.analysisSummaryEn : analysis.analysisSummary)
+                // 연결 해석 분석 (언어 설정에 따라 선택)
+                Text(selectedLanguage == "ENG" ? analysis.crossIndicatorAnalysisEn : analysis.crossIndicatorAnalysis)
                     .font(.system(size: 13, weight: .regular, design: .default))
                     .foregroundColor(theme.secondaryText)
                     .lineSpacing(2)
@@ -324,6 +327,7 @@ struct AISignalLegendCard: View {
 
 // MARK: - 신호 범례 행
 struct SignalLegendRow: View {
+    @EnvironmentObject var theme: ThemeManager
     let signal: String
     let range: String
     let color: Color
@@ -336,12 +340,12 @@ struct SignalLegendRow: View {
 
             Text(signal)
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundColor(.white)
+                .foregroundColor(theme.primaryText)
                 .frame(width: 90, alignment: .leading)
 
             Text(range)
                 .font(.system(size: 11, weight: .regular))
-                .foregroundColor(Color.white.opacity(0.7))
+                .foregroundColor(theme.secondaryText)
                 .frame(maxWidth: .infinity, alignment: .trailing)
         }
     }
@@ -681,6 +685,188 @@ struct IndicatorValueGroup: View {
                     }
                 }
             }
+        }
+    }
+}
+
+// MARK: - 연결 해석 분석 카드 (v5.0)
+struct AICrossIndicatorAnalysisCard: View {
+    @EnvironmentObject var theme: ThemeManager
+    @AppStorage("selectedLanguage") private var selectedLanguage: String = "ENG"
+    let analysis: AIAnalysisResponse
+
+    private var localization: Localization {
+        Localization.shared.language = selectedLanguage
+        return Localization.shared
+    }
+
+    var body: some View {
+        VStack(spacing: 16) {
+            HStack {
+                Text(selectedLanguage == "ENG" ? "Analysis Details" : "분석 상세")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(theme.primaryText)
+
+                Spacer()
+            }
+
+            VStack(spacing: 14) {
+                // 신뢰도 라벨
+                HStack(spacing: 8) {
+                    Text(selectedLanguage == "ENG" ? "Confidence:" : "신뢰도:")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(theme.secondaryText)
+
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(confidenceColor())
+                            .frame(width: 8, height: 8)
+
+                        Text(analysis.confidenceLabel)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(confidenceColor())
+                    }
+
+                    Spacer()
+                }
+
+                Divider()
+                    .foregroundColor(theme.cardBorderColor)
+
+                // 신호 근거
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(selectedLanguage == "ENG" ? "Signal Rationale" : "신호 근거")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(theme.secondaryText)
+
+                    Text(selectedLanguage == "ENG" ? analysis.signalRationaleEn : analysis.signalRationale)
+                        .font(.system(size: 12, weight: .regular))
+                        .foregroundColor(theme.primaryText)
+                        .lineSpacing(1.5)
+                }
+
+                Divider()
+                    .foregroundColor(theme.cardBorderColor)
+
+                // 강세 요인
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text(selectedLanguage == "ENG" ? "Bullish Factors" : "강세 요인")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(theme.secondaryText)
+
+                        Spacer()
+                    }
+
+                    let bullishList = selectedLanguage == "ENG" ? analysis.bullishFactorsEn : analysis.bullishFactors
+                    VStack(alignment: .leading, spacing: 6) {
+                        if bullishList.isEmpty {
+                            Text(selectedLanguage == "ENG" ? "No bullish factors" : "강세 요인 없음")
+                                .font(.system(size: 12, weight: .regular))
+                                .foregroundColor(theme.secondaryText)
+                        } else {
+                            ForEach(bullishList, id: \.self) { factor in
+                                HStack(spacing: 8) {
+                                    Circle()
+                                        .fill(Color(red: 0.2, green: 0.8, blue: 0.4))
+                                        .frame(width: 6, height: 6)
+
+                                    Text(factor)
+                                        .font(.system(size: 11, weight: .regular))
+                                        .foregroundColor(theme.primaryText)
+                                        .lineSpacing(1.2)
+
+                                    Spacer()
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Divider()
+                    .foregroundColor(theme.cardBorderColor)
+
+                // 약세 요인
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text(selectedLanguage == "ENG" ? "Bearish Factors" : "약세 요인")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(theme.secondaryText)
+
+                        Spacer()
+                    }
+
+                    let bearishList = selectedLanguage == "ENG" ? analysis.bearishFactorsEn : analysis.bearishFactors
+                    VStack(alignment: .leading, spacing: 6) {
+                        if bearishList.isEmpty {
+                            Text(selectedLanguage == "ENG" ? "No bearish factors" : "약세 요인 없음")
+                                .font(.system(size: 12, weight: .regular))
+                                .foregroundColor(theme.secondaryText)
+                        } else {
+                            ForEach(bearishList, id: \.self) { factor in
+                                HStack(spacing: 8) {
+                                    Circle()
+                                        .fill(Color(red: 1.0, green: 0.2, blue: 0.2))
+                                        .frame(width: 6, height: 6)
+
+                                    Text(factor)
+                                        .font(.system(size: 11, weight: .regular))
+                                        .foregroundColor(theme.primaryText)
+                                        .lineSpacing(1.2)
+
+                                    Spacer()
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Divider()
+                    .foregroundColor(theme.cardBorderColor)
+
+                // 신뢰도 이유
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(selectedLanguage == "ENG" ? "Confidence Reason" : "신뢰도 이유")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(theme.secondaryText)
+
+                    Text(selectedLanguage == "ENG" ? analysis.confidenceReasonEn : analysis.confidenceReason)
+                        .font(.system(size: 12, weight: .regular))
+                        .foregroundColor(theme.primaryText)
+                        .lineSpacing(1.5)
+                }
+            }
+            .padding(16)
+            .background(theme.cardIconBackground)
+            .cornerRadius(8)
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: theme.cardCornerRadius)
+                .fill(theme.cardBackground)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: theme.cardCornerRadius)
+                .stroke(theme.cardBorderColor, lineWidth: 1)
+        )
+        .shadow(
+            color: theme.cardShadow,
+            radius: 12,
+            x: 0,
+            y: 4
+        )
+    }
+
+    private func confidenceColor() -> Color {
+        switch analysis.confidenceLabel {
+        case "High":
+            return Color(red: 0.2, green: 0.8, blue: 0.4)
+        case "Medium":
+            return Color(red: 1.0, green: 0.8, blue: 0.0)
+        case "Low":
+            return Color(red: 1.0, green: 0.2, blue: 0.2)
+        default:
+            return Color.gray
         }
     }
 }
