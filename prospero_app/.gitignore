@@ -12,19 +12,13 @@ DerivedData/
 *.xcscmblueprint
 build/
 
-# Python
-__pycache__/
-*.py[cod]
-*.pyo
-.env
-*.zip
+# CocoaPods
+Pods/
+Podfile.lock
+
+# Swift Package Manager
+.swiftpm/
+
+# Deployment
 *.sh
-venv/
-.venv/
-
-# AWS / Secrets
-.env.local
-*.pem
-
-#
-push.sh
+*.zip

@@ -38,8 +38,9 @@ def lambda_handler(event, context):
         fetcher = DataFetcher()
         raw_data = fetcher.get_30day_data(analysis_date)
 
-        # 3. LLM용 포맷팅
+        # 3. LLM용 포맷팅 + 점수 계산용 포맷팅
         formatted_data = fetcher.format_for_llm(raw_data)
+        score_data = fetcher.format_for_analyzer(raw_data)
 
         # 4. ChatGPT를 통한 점수 계산
         print("🤖 ChatGPT를 통한 분석 중...")
@@ -47,7 +48,8 @@ def lambda_handler(event, context):
         analysis_result = analyzer.analyze(
             date=analysis_date,
             crypto_data_json=formatted_data["crypto_data_json"],
-            macro_data_json=formatted_data["macro_data_json"]
+            macro_data_json=formatted_data["macro_data_json"],
+            score_data=score_data
         )
 
         # 5. 결과를 DynamoDB에 저장

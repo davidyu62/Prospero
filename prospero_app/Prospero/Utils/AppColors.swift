@@ -10,9 +10,9 @@ import SwiftUI
 // MARK: - Dark Theme Colors
 extension Color {
     // 다크 테마 배경
-    static let darkBackground = Color(red: 15/255, green: 17/255, blue: 23/255)  // #0F1117
-    static let darkCardBackground = Color(red: 22/255, green: 27/255, blue: 34/255)  // #161B22
-    static let darkAccentBackground = Color(red: 28/255, green: 33/255, blue: 40/255)  // #1C2128
+    static let darkBackground = Color(red: 12/255, green: 16/255, blue: 28/255)  // #0C101C
+    static let darkCardBackground = Color(red: 18/255, green: 23/255, blue: 37/255)  // #121725
+    static let darkAccentBackground = Color(red: 24/255, green: 29/255, blue: 43/255)  // #181D2B
 
     // 라이트 테마 배경
     static let lightBackground = Color(red: 248/255, green: 250/255, blue: 252/255)  // #F8FAFC

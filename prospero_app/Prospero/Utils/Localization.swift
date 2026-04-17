@@ -46,7 +46,7 @@ class Localization {
             case "Crypto Dashboard": return "암호화폐 대시보드"
             case "Macro Dashboard": return "거시경제 대시보드"
             case "AI": return "AI"
-            case "AI Analysis": return "AI 분석"
+            case "AI Analysis": return "AI Insight"
             case "AI Analysis Description": return "Crypto와 Macro 데이터를 분석하여 투자 점수를 제공합니다."
             case "Settings": return "설정"
             case "Language": return "언어"
@@ -55,6 +55,7 @@ class Localization {
         default:
             switch key {
             case "AI Analysis Description": return "Analyze Crypto and Macro data to provide investment scores."
+            case "AI Analysis": return "AI Insight"
             default: return key
             }
         }
@@ -79,6 +80,7 @@ class Localization {
             case "Exchange Balance": return "거래소잔고"
             case "Open Interest": return "개방 관심도"
             case "OI + Price": return "미결제 약정"
+            case "MVRV": return "MVRV"
             case "BTC Trend": return "BTC 추세"
             case "Interest Rate": return "기준금리"
             case "Treasury 10Y": return "10년물 국채수익률"
@@ -321,7 +323,20 @@ class Localization {
             case "Global Impact": return "글로벌 영향"
             case "Affects international trade and commodity prices": return "국제 무역과 원자재 가격에 영향을 미칩니다"
             case "The Dollar Index is calculated as a weighted geometric mean of the dollar's value against the basket of currencies. A value above 100 means the dollar is stronger than the baseline (set in 1973), while below 100 means it's weaker. A strong dollar makes U.S. exports more expensive but imports cheaper, while a weak dollar has the opposite effect. The index is closely watched by traders, investors, and policymakers as it impacts global trade, commodity prices (which are often priced in dollars), and emerging market economies.": return "달러 인덱스는 통화 바구니에 대한 달러 가치의 가중 기하 평균으로 계산됩니다. 100보다 높은 값은 달러가 기준선(1973년 설정)보다 강하다는 의미이며, 100보다 낮은 값은 약하다는 의미입니다. 강한 달러는 미국 수출을 더 비싸게 만들지만 수입을 더 저렴하게 만드는 반면, 약한 달러는 반대 효과를 가집니다. 이 지수는 글로벌 무역, 원자재 가격(종종 달러로 표시됨), 신흥 시장 경제에 영향을 미치기 때문에 트레이더, 투자자 및 정책 입안자들이 면밀히 관찰합니다."
-            
+
+            // MVRV
+            case "What is MVRV?": return "MVRV란 무엇인가요?"
+            case "MVRV (Market Value to Realized Value) is a ratio that compares the current market value of Bitcoin to its realized value. Market value is the current market cap (price × supply), while realized value represents the average price at which all bitcoins were last moved on-chain.": return "MVRV(시장가치/실현가치)는 현재 비트코인의 시장 가치를 실현 가치와 비교하는 비율입니다. 시장 가치는 현재 시가총액(가격 × 공급량)이고, 실현 가치는 모든 비트코인이 마지막으로 체인상에서 이동된 평균 가격을 나타냅니다."
+            case "MVRV > 1.0": return "MVRV > 1.0"
+            case "Market cap above average cost basis (profit)": return "시장 가치가 평균 매수가보다 높음 (수익)"
+            case "MVRV < 1.0": return "MVRV < 1.0"
+            case "Market cap below average cost basis (loss)": return "시장 가치가 평균 매수가보다 낮음 (손실)"
+            case "Market Top Indicator": return "시장 고점 신호"
+            case "Extreme MVRV readings can indicate overheated markets": return "극도의 MVRV 수치는 과열된 시장을 나타낼 수 있습니다"
+            case "Value Accumulation": return "가치 축적"
+            case "Low MVRV suggests long-term holders at a loss": return "낮은 MVRV는 손실을 본 장기 보유자를 시사합니다"
+            case "MVRV is calculated by dividing the current market cap by the realized cap. When MVRV is high (above 3-4), the market may be overheated with investors holding significant profits, which historically has preceded market corrections. Conversely, when MVRV is low (below 1), it suggests that most holders are underwater, potentially indicating a market bottom or buying opportunity. MVRV helps identify periods when long-term investors are most likely to take profits or when capitulation is occurring.": return "MVRV는 현재 시가총액을 실현 가치로 나누어 계산합니다. MVRV가 높을 때(3-4 이상), 투자자들이 상당한 수익을 보유한 과열된 시장일 수 있으며, 역사적으로 시장 조정이 뒤따랐습니다. 반대로 MVRV가 낮을 때(1 미만), 대부분의 보유자가 손실을 본 상태를 시사하며, 이는 시장 바닥이나 매수 기회를 나타낼 수 있습니다. MVRV는 장기 투자자들이 이익을 실현할 가능성이 가장 높거나 시장 포기(capitulation)가 발생하는 시기를 식별하는 데 도움이 됩니다."
+
             default: return key
             }
         default:

@@ -6,14 +6,15 @@
 
 import boto3
 import json
+import os
 from datetime import datetime, timedelta
 from typing import Dict, Optional
 
 class DataFetcher:
     def __init__(self, region: str = "ap-northeast-2"):
         self.dynamodb = boto3.client("dynamodb", region_name=region)
-        self.crypto_table = "TB_CRYPTO_DATA"
-        self.macro_table = "TB_MACRO_DATA"
+        self.crypto_table = os.getenv("DYNAMODB_CRYPTO_TABLE", "TB_CRYPTO_DATA")
+        self.macro_table = os.getenv("DYNAMODB_MACRO_TABLE", "TB_MACRO_DATA")
 
     def generate_date_list(self, end_date: str, days: int = 30) -> list:
         """
@@ -217,6 +218,99 @@ class DataFetcher:
             "macro": macro_data
         }
 
+    def format_for_analyzer(self, data: Dict) -> Dict:
+        """
+        score_analyzer가 기대하는 current/30d_ago 형식으로 변환
+
+        TB_CRYPTO_DATA 필드명(camelCase) → score_analyzer 필드명(snake_case) 변환
+        btcPrice → btc_change30d/btc_change7d 변화율 계산
+        fearGreedIndex → fear_greed_current + fear_greed_avg30d 계산
+        openInterest → oi_change30d 계산
+        """
+        crypto_data = data["crypto"]  # {date: {...}}
+        macro_data = data["macro"]    # {date: {...}}
+
+        sorted_dates = sorted(crypto_data.keys(), reverse=True)
+        sorted_macro_dates = sorted(macro_data.keys(), reverse=True)
+
+        # current: 가장 최신 날짜
+        crypto_current_raw = crypto_data[sorted_dates[0]]
+
+        # 30일 전: 30번째 인덱스 또는 가장 오래된 데이터
+        crypto_30d_raw = crypto_data[sorted_dates[min(29, len(sorted_dates) - 1)]]
+
+        # 7일 전
+        crypto_7d_raw = crypto_data[sorted_dates[min(7, len(sorted_dates) - 1)]]
+
+        # BTC 변화율 계산
+        btc_current = float(crypto_current_raw.get("btcPrice", 0) or 0)
+        btc_30d = float(crypto_30d_raw.get("btcPrice", 0) or 0)
+        btc_7d = float(crypto_7d_raw.get("btcPrice", 0) or 0)
+        btc_change30d = round((btc_current - btc_30d) / btc_30d * 100, 2) if btc_30d else 0
+        btc_change7d = round((btc_current - btc_7d) / btc_7d * 100, 2) if btc_7d else 0
+
+        # Fear & Greed 30일 평균
+        fear_greed_values = [
+            float(v["fearGreedIndex"]) for v in crypto_data.values()
+            if v.get("fearGreedIndex") is not None
+        ]
+        fear_greed_avg30d = round(sum(fear_greed_values) / len(fear_greed_values), 2) if fear_greed_values else 50
+
+        # OI 변화율
+        oi_current = float(crypto_current_raw.get("openInterest", 0) or 0)
+        oi_30d = float(crypto_30d_raw.get("openInterest", 0) or 0)
+        oi_change30d = round((oi_current - oi_30d) / oi_30d * 100, 2) if oi_30d else 0
+
+        # Macro: current / 30d_ago
+        macro_current_raw = macro_data[sorted_macro_dates[0]]
+        macro_30d_raw = macro_data[sorted_macro_dates[min(29, len(sorted_macro_dates) - 1)]]
+
+        # MVRV 30일 평균
+        mvrv_values = [
+            float(v["mvrv"]) for v in crypto_data.values()
+            if v.get("mvrv") is not None
+        ]
+        mvrv_current = float(crypto_current_raw.get("mvrv", 1.0) or 1.0)
+        mvrv_avg30d = round(sum(mvrv_values) / len(mvrv_values), 4) if mvrv_values else 1.0
+
+        return {
+            "crypto": {
+                "current": {
+                    "btcPrice": btc_current,
+                    "btc_change30d": btc_change30d,
+                    "btc_change7d": btc_change7d,
+                    "fear_greed_current": float(crypto_current_raw.get("fearGreedIndex", 50) or 50),
+                    "fear_greed_avg30d": fear_greed_avg30d,
+                    "long_short_ratio": float(crypto_current_raw.get("longShortRatio", 1.0) or 1.0),
+                    "open_interest_change": oi_change30d,
+                    "open_interest_change30d": oi_change30d,
+                    "oi_change30d": oi_change30d,
+                    "mvrv_current": mvrv_current,
+                    "mvrv_avg30d": mvrv_avg30d,
+                },
+                "30d_ago": {
+                    "btcPrice": btc_30d,
+                }
+            },
+            "macro": {
+                "current": {
+                    "interest_rate_current": float(macro_current_raw.get("interestRate", 3.0) or 3.0),
+                    "treasury10y": float(macro_current_raw.get("treasury10y", 4.0) or 4.0),
+                    "m2": float(macro_current_raw.get("m2", 22000) or 22000),
+                    "dxy_current": float(macro_current_raw.get("dollarIndex", 100) or 100),
+                    "dxy_30d_ago": float(macro_30d_raw.get("dollarIndex", 100) or 100),
+                    "unemployment_current": float(macro_current_raw.get("unemployment", 4.0) or 4.0),
+                    "cpi": float(macro_current_raw.get("cpi", 2.5) or 2.5),
+                },
+                "30d_ago": {
+                    "interest_rate": float(macro_30d_raw.get("interestRate", 3.0) or 3.0),
+                    "m2": float(macro_30d_raw.get("m2", 22000) or 22000),
+                    "dxy": float(macro_30d_raw.get("dollarIndex", 100) or 100),
+                    "unemployment": float(macro_30d_raw.get("unemployment", 4.0) or 4.0),
+                }
+            }
+        }
+
     def format_for_llm(self, data: Dict) -> Dict[str, str]:
         """
         LLM(ChatGPT)에 전달할 형식으로 데이터 포맷팅
@@ -225,21 +319,19 @@ class DataFetcher:
         crypto_data = data.get("crypto", {})
         macro_data = data.get("macro", {})
 
-        # 필수 필드 검증
+        # 핵심 필드 누락 시 경고만 출력하고 skip (분석은 계속 진행)
         required_crypto_fields = ["btcPrice", "fearGreedIndex", "longShortRatio", "openInterest"]
         required_macro_fields = ["interestRate", "treasury10y", "cpi", "m2", "unemployment", "dollarIndex"]
 
-        # 각 날짜별 크립토 데이터 검증
         for date, crypto_item in crypto_data.items():
             missing_fields = [f for f in required_crypto_fields if f not in crypto_item or crypto_item[f] is None]
             if missing_fields:
-                raise ValueError(f"❌ TB_CRYPTO_DATA 필수 필드 누락 ({date}): {missing_fields}")
+                print(f"⚠️  TB_CRYPTO_DATA 필드 누락 ({date}): {missing_fields} - 기본값으로 진행")
 
-        # 각 날짜별 매크로 데이터 검증
         for date, macro_item in macro_data.items():
             missing_fields = [f for f in required_macro_fields if f not in macro_item or macro_item[f] is None]
             if missing_fields:
-                raise ValueError(f"❌ TB_MACRO_DATA 필수 필드 누락 ({date}): {missing_fields}")
+                print(f"⚠️  TB_MACRO_DATA 필드 누락 ({date}): {missing_fields} - 기본값으로 진행")
 
         crypto_str = json.dumps(crypto_data, indent=2, ensure_ascii=False)
         macro_str = json.dumps(macro_data, indent=2, ensure_ascii=False)

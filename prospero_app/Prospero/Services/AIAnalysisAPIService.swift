@@ -10,14 +10,41 @@ class AIAnalysisAPIService {
     static let shared = AIAnalysisAPIService()
 
     private let baseURL = "https://n84fir7sq6.execute-api.ap-northeast-2.amazonaws.com/prod"
+    private let cacheKeyDate = "ai_cache_date"
+    private let cacheKeyData = "ai_cache_data"
 
     private init() {}
 
     func fetchAIAnalysis(for date: String) async throws -> (analysis: AIAnalysisResponse, crypto: CryptoDataItem?, macro: MacroDataItem?) {
-        // 1. AI 분석 데이터 조회
-        let aiAnalysis = try await fetchAIAnalysisOnly(for: date)
+        // 1. 캐시 확인 - 당일 데이터 있으면 바로 반환
+        if let cached = loadCachedAnalysis(for: date) {
+            print("✅ 캐시 히트 (\(date))")
+            var cryptoData: CryptoDataItem? = nil
+            var macroData: MacroDataItem? = nil
 
-        // 2. Crypto 데이터 조회 (지표분석용 원시값)
+            do {
+                let cryptoResponse = try await CryptoAPIService.shared.fetchCryptoDataWithPrevious(date: date)
+                cryptoData = cryptoResponse.data.requestDate
+            } catch {
+                print("⚠️  Crypto 데이터 조회 실패: \(error)")
+            }
+
+            do {
+                let macroResponse = try await MacroAPIService.shared.fetchMacroDataWithPrevious(date: date)
+                macroData = macroResponse.data.requestDate
+            } catch {
+                print("⚠️  Macro 데이터 조회 실패: \(error)")
+            }
+
+            return (analysis: cached, crypto: cryptoData, macro: macroData)
+        }
+
+        // 2. 캐시 미스 - Lambda 호출
+        print("🌐 캐시 미스 - Lambda 호출 (\(date))")
+        let aiAnalysis = try await fetchAIAnalysisOnly(for: date)
+        cacheAnalysis(aiAnalysis, for: date)
+
+        // 3. Crypto 데이터 조회 (지표분석용 원시값)
         var cryptoData: CryptoDataItem? = nil
         do {
             let cryptoResponse = try await CryptoAPIService.shared.fetchCryptoDataWithPrevious(date: date)
@@ -26,7 +53,7 @@ class AIAnalysisAPIService {
             print("⚠️  Crypto 데이터 조회 실패 (지표분석 표시 불가): \(error)")
         }
 
-        // 3. Macro 데이터 조회 (지표분석용 원시값)
+        // 4. Macro 데이터 조회 (지표분석용 원시값)
         var macroData: MacroDataItem? = nil
         do {
             let macroResponse = try await MacroAPIService.shared.fetchMacroDataWithPrevious(date: date)
@@ -37,6 +64,26 @@ class AIAnalysisAPIService {
 
         return (analysis: aiAnalysis, crypto: cryptoData, macro: macroData)
     }
+
+    // MARK: - 캐시 메서드
+
+    private func loadCachedAnalysis(for date: String) -> AIAnalysisResponse? {
+        return nil // 캐시 비활성화 - 항상 API 호출
+//        guard UserDefaults.standard.string(forKey: cacheKeyDate) == date,
+//              let data = UserDefaults.standard.data(forKey: cacheKeyData) else {
+//            return nil
+//        }
+//        return try? JSONDecoder().decode(AIAnalysisResponse.self, from: data)
+    }
+
+    private func cacheAnalysis(_ analysis: AIAnalysisResponse, for date: String) {
+        guard let data = try? JSONEncoder().encode(analysis) else { return }
+        UserDefaults.standard.set(date, forKey: cacheKeyDate)
+        UserDefaults.standard.set(data, forKey: cacheKeyData)
+        print("💾 AI 분석 데이터 캐시 저장 (\(date))")
+    }
+
+    // MARK: - API 호출
 
     private func fetchAIAnalysisOnly(for date: String) async throws -> AIAnalysisResponse {
         let urlString = "\(baseURL)/api/ai-analysis/date?date=\(date)"

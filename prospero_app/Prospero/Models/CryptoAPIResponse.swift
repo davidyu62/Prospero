@@ -24,6 +24,7 @@ struct CryptoDataItem: Codable {
     let longShortRatio: Double?
     let fearGreedIndex: Int?
     let openInterest: Double?
+    let mvrv: Double?
 
     enum CodingKeys: String, CodingKey {
         case date
@@ -31,6 +32,7 @@ struct CryptoDataItem: Codable {
         case longShortRatio
         case fearGreedIndex
         case openInterest
+        case mvrv
     }
 }
 

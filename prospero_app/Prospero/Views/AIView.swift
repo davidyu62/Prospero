@@ -31,23 +31,20 @@ struct AIView: View {
                     // Header
                     VStack(alignment: .leading, spacing: 12) {
                         HStack(spacing: 12) {
-                            AppIconView(size: 40)
-
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("AI Analysis")
-                                    .font(.system(size: 20, weight: .bold))
-                                    .foregroundColor(theme.primaryText)
-
-                                Text(localization.ai("Investment Signal Analysis"))
-                                    .font(.system(size: 12, weight: .medium))
-                                    .foregroundColor(theme.secondaryText)
-                            }
+                            Text("Prospero")
+                                .font(.custom("Snell Roundhand", size: 28))
+                                .foregroundColor(theme.primaryText)
 
                             Spacer()
                         }
                     }
                     .padding(.horizontal, 20)
                     .padding(.vertical, 16)
+
+                    // 헤더 아래 구분선
+                    Rectangle()
+                        .fill(Color.white.opacity(0.08))
+                        .frame(height: 0.5)
 
                     // Content
                     if isLoading {
@@ -274,7 +271,7 @@ struct AISignalLegendCard: View {
 
             VStack(spacing: 8) {
                 SignalLegendRow(
-                    signal: "Strong Buy",
+                    signal: selectedLanguage == "ENG" ? "Strong Buy" : "강력매수",
                     range: selectedLanguage == "ENG" ? "75-100" : "75-100점",
                     color: Color(red: 0.0, green: 0.8, blue: 0.2)
                 )
@@ -404,7 +401,6 @@ struct AIDetailedExplanationCard: View {
     @EnvironmentObject var theme: ThemeManager
     @AppStorage("selectedLanguage") private var selectedLanguage: String = "ENG"
     let analysis: AIAnalysisResponse
-    @State private var expandedIndex: Int? = nil
 
     private var localization: Localization {
         Localization.shared.language = selectedLanguage
@@ -427,6 +423,7 @@ struct AIDetailedExplanationCard: View {
                 (localization.ai("Fear & Greed"), analysis.indicatorExplanationsEn.fearGreed),
                 (localization.ai("Long/Short Ratio"), analysis.indicatorExplanationsEn.longShort),
                 (localization.ai("Open Interest"), analysis.indicatorExplanationsEn.openInterest),
+                (localization.ai("MVRV"), analysis.indicatorExplanationsEn.mvrv),
                 (localization.ai("Interest Rate"), analysis.indicatorExplanationsEn.interestRate),
                 (localization.ai("Treasury 10Y"), analysis.indicatorExplanationsEn.treasury10y),
                 (localization.ai("M2 Supply"), analysis.indicatorExplanationsEn.m2),
@@ -439,6 +436,7 @@ struct AIDetailedExplanationCard: View {
                 (localization.ai("Fear & Greed"), analysis.indicatorExplanations.fearGreed),
                 (localization.ai("Long/Short Ratio"), analysis.indicatorExplanations.longShort),
                 (localization.ai("OI + Price"), analysis.indicatorExplanations.openInterest),
+                (localization.ai("MVRV"), analysis.indicatorExplanations.mvrv),
                 (localization.ai("Interest Rate"), analysis.indicatorExplanations.interestRate),
                 (localization.ai("Treasury 10Y"), analysis.indicatorExplanations.treasury10y),
                 (localization.ai("M2 Supply"), analysis.indicatorExplanations.m2),
@@ -453,14 +451,8 @@ struct AIDetailedExplanationCard: View {
                     ExplanationRow(
                         title: explanations[index].0,
                         text: explanations[index].1,
-                        isExpanded: expandedIndex == index,
                         theme: theme
                     )
-                    .onTapGesture {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            expandedIndex = expandedIndex == index ? nil : index
-                        }
-                    }
                 }
             }
             .padding(16)
@@ -486,33 +478,20 @@ struct AIDetailedExplanationCard: View {
 struct ExplanationRow: View {
     let title: String
     let text: String
-    let isExpanded: Bool
     let theme: ThemeManager
 
     var body: some View {
-        VStack(spacing: 8) {
-            HStack {
-                Text(title)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(theme.primaryText)
-
-                Spacer()
-
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(theme.secondaryText)
-                    .rotationEffect(.degrees(isExpanded ? 90 : 0))
-            }
-
-            if isExpanded {
-                Text(text)
-                    .font(.system(size: 12, weight: .regular))
-                    .foregroundColor(theme.secondaryText)
-                    .lineSpacing(1.5)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .transition(.opacity)
-            }
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(theme.primaryText)
+            Text(text)
+                .font(.system(size: 12, weight: .regular))
+                .foregroundColor(theme.secondaryText)
+                .lineSpacing(1.5)
+                .fixedSize(horizontal: false, vertical: true)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
         .background(theme.cardIconBackground)
         .cornerRadius(8)
@@ -715,28 +694,6 @@ struct AICrossIndicatorAnalysisCard: View {
             }
 
             VStack(spacing: 14) {
-                // 신뢰도 라벨
-                HStack(spacing: 8) {
-                    Text(selectedLanguage == "ENG" ? "Confidence:" : "신뢰도:")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(theme.secondaryText)
-
-                    HStack(spacing: 6) {
-                        Circle()
-                            .fill(confidenceColor())
-                            .frame(width: 8, height: 8)
-
-                        Text(analysis.confidenceLabel)
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(confidenceColor())
-                    }
-
-                    Spacer()
-                }
-
-                Divider()
-                    .foregroundColor(theme.cardBorderColor)
-
                 // 신호 근거
                 VStack(alignment: .leading, spacing: 8) {
                     Text(selectedLanguage == "ENG" ? "Signal Rationale" : "신호 근거")

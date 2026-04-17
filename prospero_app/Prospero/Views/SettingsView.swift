@@ -30,6 +30,26 @@ struct SettingsView: View {
             
             ScrollView {
                 VStack(spacing: 0) {
+                    // Header
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack(spacing: 12) {
+                            Text("Prospero")
+                                .font(.custom("Snell Roundhand", size: 28))
+                                .foregroundColor(theme.primaryText)
+
+                            Spacer()
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 20)
+                    .padding(.bottom, 20)
+
+                    // 헤더 아래 구분선
+                    Rectangle()
+                        .fill(Color.white.opacity(0.08))
+                        .frame(height: 0.5)
+                        .padding(.bottom, 20)
+
                     VStack(spacing: 0) {
                         // Theme Section
                         SettingsSection(theme: theme) {

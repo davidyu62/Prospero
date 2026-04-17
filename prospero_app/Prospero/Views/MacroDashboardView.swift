@@ -36,22 +36,12 @@ struct MacroDashboardView: View {
                 VStack(spacing: 20) {
                     // Header
                     VStack(alignment: .leading, spacing: 12) {
-                        // Top Row: App Icon, Name, Refresh Button
+                        // Top Row: App Name
                         HStack(spacing: 12) {
-                            // App Icon
-                            AppIconView(size: 44)
-                            
-                            // App Name
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Prospero")
-                                    .font(.system(size: 22, weight: .bold))
-                                    .foregroundColor(theme.primaryText)
-                                
-                                Text("AI Investment Insights")
-                                    .font(.system(size: 11, weight: .medium))
-                                    .foregroundColor(theme.secondaryText)
-                            }
-                            
+                            Text("Prospero")
+                                .font(.custom("Snell Roundhand", size: 28))
+                                .foregroundColor(theme.primaryText)
+
                             Spacer()
                         }
                         
@@ -72,7 +62,13 @@ struct MacroDashboardView: View {
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 20)
-                    
+
+                    // 헤더 아래 구분선
+                    Rectangle()
+                        .fill(Color.white.opacity(0.08))
+                        .frame(height: 0.5)
+                        .padding(.top, 12)
+
                     // Macro Metric Cards
                     VStack(spacing: 12) {
                         MacroMetricCard(metric: dashboardData.interestRate, valueColor: colorForInterestRate(dashboardData.interestRate.value), theme: theme)

@@ -28,6 +28,7 @@ struct CryptoMetric {
     let value: String
     let change: String? // optional change indicator
     let changeIsPositive: Bool?
+    let barProgress: Double?  // 진행 바 진행률 (0.0~1.0), nil이면 표시 안 함
 }
 
 struct CryptoDashboardData {
@@ -35,7 +36,8 @@ struct CryptoDashboardData {
     let fearGreed: FearGreedData
     let openInterest: CryptoMetric
     let longShortRatio: CryptoMetric
-    
+    let mvrv: CryptoMetric
+
     // ⚠️ 임시 샘플 데이터 - API 호출 실패 시에만 사용됩니다
     static let sample = CryptoDashboardData(
         bitcoin: BitcoinData(
@@ -56,14 +58,24 @@ struct CryptoDashboardData {
             subtitle: "Futures Market",
             value: "4.5M BTC",
             change: "▲ +6.7%",
-            changeIsPositive: true
+            changeIsPositive: true,
+            barProgress: 0.45
         ),
         longShortRatio: CryptoMetric(
             title: "Long/Short Ratio",
             subtitle: "Market Sentiment",
             value: "1.23",
             change: "▲ +2.1%",
-            changeIsPositive: true
+            changeIsPositive: true,
+            barProgress: 0.55
+        ),
+        mvrv: CryptoMetric(
+            title: "MVRV",
+            subtitle: "Market Value/Realized Value",
+            value: "1.45",
+            change: nil,
+            changeIsPositive: nil,
+            barProgress: 0.45
         )
     )
 }

@@ -60,8 +60,10 @@ def main():
         print("\n📋 Step 2: LLM 프롬프트 포맷팅")
         print("-" * 60)
         formatted_data = fetcher.format_for_llm(raw_data)
+        score_data = fetcher.format_for_analyzer(raw_data)
         print(f"✅ 크립토 데이터 JSON 길이: {len(formatted_data['crypto_data_json'])} 자")
         print(f"✅ 매크로 데이터 JSON 길이: {len(formatted_data['macro_data_json'])} 자")
+        print(f"✅ 점수 계산용 데이터 (current): btc_change30d={score_data['crypto']['current']['btc_change30d']:.2f}%, fear_greed={score_data['crypto']['current']['fear_greed_current']:.0f}, dxy={score_data['macro']['current']['dxy_current']:.2f}")
 
         # 3. ChatGPT 분석
         print("\n🤖 Step 3: ChatGPT를 통한 점수 계산")
@@ -79,7 +81,8 @@ def main():
         analysis_result = analyzer.analyze(
             date=test_date,
             crypto_data_json=formatted_data["crypto_data_json"],
-            macro_data_json=formatted_data["macro_data_json"]
+            macro_data_json=formatted_data["macro_data_json"],
+            score_data=score_data
         )
 
         # 4. 결과 출력
@@ -103,8 +106,6 @@ def main():
         print(f"  - 실업률: {analysis_result['unemployment_score']:.2f}/4")
         print(f"  - CPI: {analysis_result['cpi_score']:.2f}/3")
         print(f"  - 상호작용: {analysis_result['interaction_score']:.2f}/5")
-        print(f"\n종합 분석:")
-        print(f"  {analysis_result['analysis_summary']}")
 
         # 5. DynamoDB 저장 (선택사항)
         print("\n💾 Step 5: DynamoDB 저장 (선택사항)")

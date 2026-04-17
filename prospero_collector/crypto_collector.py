@@ -3,7 +3,7 @@ Prospero_collector - Crypto data collector
 크립토 데이터 조회 (Binance, Alternative.me)
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Optional
 
@@ -14,7 +14,7 @@ def get_crypto_data(date: str) -> Optional[dict]:
     """
     크립토 데이터 조회
     date: yyyyMMdd 형식
-    Returns: {btcPrice, longShortRatio, exchangeBalance, fearGreedIndex, openInterest}
+    Returns: {btcPrice, longShortRatio, exchangeBalance, fearGreedIndex, openInterest, mvrv}
     """
     try:
         btc_price = _get_btc_price()
@@ -22,13 +22,15 @@ def get_crypto_data(date: str) -> Optional[dict]:
         exchange_balance = _get_exchange_balance()
         fear_greed_index = _get_fear_greed_index()
         open_interest = _get_open_interest()
+        mvrv = _get_mvrv(date)
 
         print(f"\n[INFO] 크립토 데이터 수집 결과:")
         print(f"  btcPrice: {btc_price if btc_price is not None else '없음'}")
         print(f"  longShortRatio: {long_short_ratio if long_short_ratio is not None else '없음'}")
         print(f"  exchangeBalance: {exchange_balance if exchange_balance is not None else '없음'}")
         print(f"  fearGreedIndex: {fear_greed_index if fear_greed_index is not None else '없음'}")
-        print(f"  openInterest: {open_interest if open_interest is not None else '없음'}\n")
+        print(f"  openInterest: {open_interest if open_interest is not None else '없음'}")
+        print(f"  mvrv: {mvrv if mvrv is not None else '없음'}\n")
 
         result = {}
         if btc_price is not None:
@@ -41,6 +43,8 @@ def get_crypto_data(date: str) -> Optional[dict]:
             result["fearGreedIndex"] = fear_greed_index
         if open_interest is not None:
             result["openInterest"] = open_interest
+        if mvrv is not None:
+            result["mvrv"] = mvrv
 
         return result if result else None
     except Exception as e:
@@ -117,6 +121,46 @@ def _get_fear_greed_index() -> Optional[int]:
             print(f"[WARN] Fear & Greed Index: 응답에 data 필드 없음 또는 빈 리스트. 응답: {data}")
     except Exception as e:
         print(f"[WARN] Fear & Greed Index 조회 실패: {e}")
+    return None
+
+
+def _get_mvrv(date: str) -> Optional[Decimal]:
+    """CoinMetrics Community API - BTC MVRV (Market Value to Realized Value)"""
+    try:
+        # yyyyMMdd → yyyy-MM-dd 변환
+        formatted_date = f"{date[:4]}-{date[4:6]}-{date[6:8]}"
+        # 당일 데이터가 없을 수 있으므로 3일치 조회 후 최신값 사용
+        start_date = (datetime.strptime(date, "%Y%m%d") - timedelta(days=3)).strftime("%Y-%m-%d")
+
+        r = requests.get(
+            "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics",
+            params={
+                "assets": "btc",
+                "metrics": "CapMVRVCur",
+                "frequency": "1d",
+                "start_time": f"{start_date}T00:00:00Z",
+                "end_time": f"{formatted_date}T23:59:59Z",
+                "page_size": 5,
+            },
+            timeout=10,
+        )
+        r.raise_for_status()
+        data = r.json()
+
+        items = data.get("data", [])
+        if items:
+            latest = items[-1]
+            value = latest.get("CapMVRVCur")
+            if value:
+                result = Decimal(str(value)).quantize(Decimal("0.0001"))
+                print(f"[INFO] MVRV 조회 성공: {result}")
+                return result
+            else:
+                print(f"[WARN] MVRV: 응답에 CapMVRVCur 값 없음. 응답: {latest}")
+        else:
+            print(f"[WARN] MVRV: 데이터 없음. 응답: {data}")
+    except Exception as e:
+        print(f"[WARN] MVRV 조회 실패: {e}")
     return None
 
 

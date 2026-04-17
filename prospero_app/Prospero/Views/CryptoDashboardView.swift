@@ -18,6 +18,7 @@ struct CryptoDashboardView: View {
     @State private var showFearGreedInfo = false
     @State private var showOpenInterestInfo = false
     @State private var showLongShortRatioInfo = false
+    @State private var showMvrvInfo = false
     @State private var updatedTime: String = ""
     @State private var showAdNotReadyAlert = false
     @AppStorage("selectedLanguage") private var selectedLanguage: String = "ENG"
@@ -42,22 +43,12 @@ struct CryptoDashboardView: View {
                             VStack(spacing: 20) {
                                 // Header
                                 VStack(alignment: .leading, spacing: 12) {
-                                    // Top Row: App Icon, Name, Refresh Button
+                                    // Top Row: App Name
                                     HStack(spacing: 12) {
-                                        // App Icon
-                                        AppIconView(size: 44)
-                                        
-                                        // App Name
-                                        VStack(alignment: .leading, spacing: 2) {
-                                            Text("Prospero")
-                                                .font(.system(size: 22, weight: .bold))
-                                                .foregroundColor(theme.primaryText)
-                                            
-                                            Text("AI Investment Insights")
-                                                .font(.system(size: 11, weight: .medium))
-                                                .foregroundColor(theme.secondaryText)
-                                        }
-                                        
+                                        Text("Prospero")
+                                            .font(.custom("Snell Roundhand", size: 28))
+                                            .foregroundColor(theme.primaryText)
+
                                         Spacer()
                                     }
                                     
@@ -78,9 +69,15 @@ struct CryptoDashboardView: View {
                                 }
                                 .padding(.horizontal, 20)
                                 .padding(.top, 20)
-                                
+
+                                // 헤더 아래 구분선
+                                Rectangle()
+                                    .fill(Color.white.opacity(0.08))
+                                    .frame(height: 0.5)
+                                    .padding(.top, 12)
+
                                 // Bitcoin Card
-                                BitcoinCard(data: dashboardData.bitcoin, theme: theme)
+                                BitcoinCard(data: dashboardData.bitcoin, fearGreed: dashboardData.fearGreed, theme: theme)
                                     .padding(.horizontal, 20)
                                     .onTapGesture {
                                         showBitcoinInfo = true
@@ -102,6 +99,10 @@ struct CryptoDashboardView: View {
                                     MetricCard(metric: dashboardData.longShortRatio, theme: theme)
                                         .onTapGesture {
                                             showLongShortRatioInfo = true
+                                        }
+                                    MetricCard(metric: dashboardData.mvrv, theme: theme)
+                                        .onTapGesture {
+                                            showMvrvInfo = true
                                         }
                                 }
                                 .padding(.horizontal, 20)
@@ -130,9 +131,6 @@ struct CryptoDashboardView: View {
                         SettingsView()
                     }
                 }
-                
-                // 배너 광고 (스크롤 영역과 네비게이션 바 사이)
-                BannerAdView()
                 
                 // Bottom Tab Bar (화면 하단에 고정)
                 BottomTabBar(selectedTab: $selectedTab, theme: theme, onAITap: {
@@ -174,6 +172,9 @@ struct CryptoDashboardView: View {
         }
         .sheet(isPresented: $showLongShortRatioInfo) {
             LongShortRatioInfoSheet()
+        }
+        .sheet(isPresented: $showMvrvInfo) {
+            MVRVInfoSheet()
         }
         .alert(localization.common("Ad Not Ready"), isPresented: $showAdNotReadyAlert) {
             Button(localization.common("OK"), role: .cancel) {}
@@ -243,6 +244,7 @@ struct CryptoDashboardView: View {
                     current: data.longShortRatio ?? 0.0,
                     previous: previousData?.longShortRatio ?? 0.0
                 )
+                let mvrvValue = data.mvrv ?? 1.0
 
                 updatedTime = formatDateString(displayDate)
                 dashboardData = CryptoDashboardData(
@@ -261,14 +263,24 @@ struct CryptoDashboardView: View {
                         subtitle: "Futures Market",
                         value: formatOpenInterest(openInterestValue),
                         change: formatChange(openInterestChange),
-                        changeIsPositive: openInterestChange >= 0
+                        changeIsPositive: openInterestChange >= 0,
+                        barProgress: min(max(openInterestValue / 150000.0, 0.0), 1.0)
                     ),
                     longShortRatio: CryptoMetric(
                         title: "Long/Short Ratio",
                         subtitle: "Market Sentiment",
                         value: String(format: "%.2f", longShortRatioValue),
                         change: formatChange(longShortRatioChange),
-                        changeIsPositive: longShortRatioChange >= 0
+                        changeIsPositive: longShortRatioChange >= 0,
+                        barProgress: longShortRatioValue / (1.0 + longShortRatioValue)
+                    ),
+                    mvrv: CryptoMetric(
+                        title: "MVRV",
+                        subtitle: "Market Value/Realized Value",
+                        value: String(format: "%.4f", mvrvValue),
+                        change: nil,
+                        changeIsPositive: nil,
+                        barProgress: min(max((mvrvValue - 0.5) / 2.0, 0.0), 1.0)
                     )
                 )
                 print("✅ 데이터 업데이트 완료 - \(displayDate)")
@@ -278,8 +290,23 @@ struct CryptoDashboardView: View {
                 dashboardData = CryptoDashboardData(
                     bitcoin: BitcoinData(price: 0.0, change24h: 0.0, high24h: 0.0, low24h: 0.0, volume24h: 0.0, dominance: 0.0, updatedAt: ""),
                     fearGreed: FearGreedData(value: 0, label: "No data"),
-                    openInterest: CryptoMetric(title: "Open Interest", subtitle: "Futures Market", value: "0.00M BTC", change: nil, changeIsPositive: nil),
-                    longShortRatio: CryptoMetric(title: "Long/Short Ratio", subtitle: "Market Sentiment", value: "0.00", change: nil, changeIsPositive: nil)
+                    openInterest: CryptoMetric(title: "Open Interest", subtitle: "Futures Market", value: "0.00M BTC", change: nil, changeIsPositive: nil, barProgress: nil),
+                    longShortRatio: CryptoMetric(
+                        title: "Long/Short Ratio",
+                        subtitle: "Market Sentiment",
+                        value: "0.00",
+                        change: nil,
+                        changeIsPositive: nil,
+                        barProgress: nil
+                    ),
+                    mvrv: CryptoMetric(
+                        title: "MVRV",
+                        subtitle: "Market Value/Realized Value",
+                        value: "0.0000",
+                        change: nil,
+                        changeIsPositive: nil,
+                        barProgress: nil
+                    )
                 )
             }
         } catch {
@@ -310,14 +337,24 @@ struct CryptoDashboardView: View {
                     subtitle: "Futures Market",
                     value: "0.00M BTC",
                     change: nil,
-                    changeIsPositive: nil
+                    changeIsPositive: nil,
+                    barProgress: nil
                 ),
                 longShortRatio: CryptoMetric(
                     title: "Long/Short Ratio",
                     subtitle: "Market Sentiment",
                     value: "0.00",
                     change: nil,
-                    changeIsPositive: nil
+                    changeIsPositive: nil,
+                    barProgress: nil
+                ),
+                mvrv: CryptoMetric(
+                    title: "MVRV",
+                    subtitle: "Market Value/Realized Value",
+                    value: "0.0000",
+                    change: nil,
+                    changeIsPositive: nil,
+                    barProgress: nil
                 )
             )
             
@@ -389,6 +426,7 @@ struct CryptoDashboardView: View {
 // MARK: - Bitcoin Card
 struct BitcoinCard: View {
     let data: BitcoinData
+    let fearGreed: FearGreedData?
     @ObservedObject var theme: ThemeManager
     @AppStorage("selectedLanguage") private var selectedLanguage: String = "ENG"
 
@@ -420,19 +458,43 @@ struct BitcoinCard: View {
                 Spacer()
             }
 
-            // Price
-            VStack(alignment: .leading, spacing: 4) {
-                Text("$\(formatPrice(data.price))")
-                    .font(.system(size: 32, weight: .bold))
-                    .foregroundColor(theme.primaryText)
+            // Price & Fear Greed Badge
+            VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("$\(formatPrice(data.price))")
+                        .font(.system(size: 32, weight: .bold))
+                        .foregroundColor(theme.primaryText)
 
-                HStack(spacing: 4) {
-                    Image(systemName: data.change24h >= 0 ? "arrowtriangle.up.fill" : "arrowtriangle.down.fill")
-                        .font(.system(size: 12))
-                        .foregroundColor(ColorUtility.colorForCryptoChange(data.change24h))
-                    Text("\(String(format: "%.2f", abs(data.change24h)))%")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(ColorUtility.colorForCryptoChange(data.change24h))
+                    HStack(spacing: 4) {
+                        Image(systemName: data.change24h >= 0 ? "arrowtriangle.up.fill" : "arrowtriangle.down.fill")
+                            .font(.system(size: 12))
+                            .foregroundColor(ColorUtility.colorForCryptoChange(data.change24h))
+                        Text("\(String(format: "%.2f", abs(data.change24h)))%")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(ColorUtility.colorForCryptoChange(data.change24h))
+                    }
+                }
+
+                // 공포탐욕 지수 미니 배지
+                if let fearGreed = fearGreed {
+                    let badgeColor = fearGreedColor(fearGreed.value)
+                    HStack {
+                        Spacer()
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(badgeColor)
+                                .frame(width: 6, height: 6)
+                            Text("\(fearGreed.value) \(fearGreed.label)")
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundColor(badgeColor)
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(
+                            Capsule()
+                                .fill(badgeColor.opacity(0.15))
+                        )
+                    }
                 }
             }
         }
@@ -452,7 +514,24 @@ struct BitcoinCard: View {
             y: 4
         )
     }
-    
+
+    private func fearGreedColor(_ value: Int) -> Color {
+        switch value {
+        case 0...20:
+            return .dangerColor  // 극도의 공포 (빨강)
+        case 21...40:
+            return .warningColor  // 공포 (주황)
+        case 41...60:
+            return .yellow  // 중립 (노랑)
+        case 61...80:
+            return .successColor.opacity(0.7)  // 탐욕 (연두)
+        case 81...100:
+            return .successColor  // 극도의 탐욕 (초록)
+        default:
+            return theme.primaryText
+        }
+    }
+
     private func formatPrice(_ price: Double) -> String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
@@ -648,60 +727,79 @@ struct MetricCard: View {
     }
     
     var body: some View {
-        HStack(spacing: 16) {
-            // Icon placeholder
-            Circle()
-                .fill(theme.cardIconBackground)
-                .frame(width: 48, height: 48)
-                .overlay(
-                    Image(systemName: iconForMetric(metric.title))
-                        .font(.system(size: 20))
-                        .foregroundColor(theme.secondaryText)
-                )
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text(localization.cryptoMetric(metric.title))
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(theme.primaryText)
-                
-                Text(localization.cryptoMetric(metric.subtitle))
-                    .font(.system(size: 12))
-                    .foregroundColor(theme.secondaryText)
-            }
-            
-            Spacer()
-            
-            VStack(alignment: .trailing, spacing: 4) {
-                // 값과 단위 분리 (예: "94762.48M BTC" → "94762.48M" + "BTC")
-                let valueParts = metric.value.split(separator: " ", maxSplits: 1)
-                let numberPart = String(valueParts.first ?? "")
-                let unitPart = valueParts.count > 1 ? String(valueParts.last ?? "") : ""
+        VStack(spacing: 12) {
+            HStack(spacing: 16) {
+                // Icon placeholder
+                Circle()
+                    .fill(theme.cardIconBackground)
+                    .frame(width: 48, height: 48)
+                    .overlay(
+                        Image(systemName: iconForMetric(metric.title))
+                            .font(.system(size: 20))
+                            .foregroundColor(theme.secondaryText)
+                    )
 
-                // 위: 숫자와 화살표
-                HStack(spacing: 4) {
-                    Text(numberPart)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(localization.cryptoMetric(metric.title))
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(theme.primaryText)
 
-                    Image(systemName: "arrow.right")
-                        .font(.system(size: 10))
-                        .foregroundColor(theme.tertiaryText)
+                    Text(localization.cryptoMetric(metric.subtitle))
+                        .font(.system(size: 12))
+                        .foregroundColor(theme.secondaryText)
                 }
 
-                // 아래: 단위와 변화율
-                HStack(spacing: 8) {
-                    if !unitPart.isEmpty {
-                        Text(unitPart)
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(theme.secondaryText)
+                Spacer()
+
+                VStack(alignment: .trailing, spacing: 4) {
+                    // 값과 단위 분리 (예: "94762.48M BTC" → "94762.48M" + "BTC")
+                    let valueParts = metric.value.split(separator: " ", maxSplits: 1)
+                    let numberPart = String(valueParts.first ?? "")
+                    let unitPart = valueParts.count > 1 ? String(valueParts.last ?? "") : ""
+
+                    // 위: 숫자와 화살표
+                    HStack(spacing: 4) {
+                        Text(numberPart)
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(theme.primaryText)
+
+                        Image(systemName: "arrow.right")
+                            .font(.system(size: 10))
+                            .foregroundColor(theme.tertiaryText)
                     }
 
-                    if let change = metric.change {
-                        Text(change)
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(colorForChangeValue(change, isPositive: metric.changeIsPositive ?? (change.contains("+") || change.contains("▲"))))
+                    // 아래: 단위와 변화율
+                    HStack(spacing: 8) {
+                        if !unitPart.isEmpty {
+                            Text(unitPart)
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundColor(theme.secondaryText)
+                        }
+
+                        if let change = metric.change {
+                            Text(change)
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(colorForChangeValue(change, isPositive: metric.changeIsPositive ?? (change.contains("+") || change.contains("▲"))))
+                        }
                     }
                 }
+            }
+
+            // 진행 바
+            if let barProgress = metric.barProgress {
+                GeometryReader { geometry in
+                    ZStack(alignment: .leading) {
+                        // 배경 바
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(Color.white.opacity(0.08))
+
+                        // 진행 바
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(colorForBarProgress(metric.title, barProgress))
+                            .frame(width: geometry.size.width * barProgress)
+                    }
+                }
+                .frame(height: 3)
             }
         }
         .padding(16)
@@ -750,6 +848,19 @@ struct MetricCard: View {
             return "circle.fill"
         }
     }
+
+    private func colorForBarProgress(_ title: String, _ progress: Double) -> Color {
+        switch title {
+        case "Open Interest":
+            // Open Interest: 상승/하락 표시 (0.5 기준)
+            return progress >= 0.5 ? .successColor : .warningColor
+        case "Long/Short Ratio":
+            // Long/Short Ratio: 롱/숏 분포 표시 (0.5 기준)
+            return progress >= 0.5 ? .successColor : .dangerColor
+        default:
+            return .blue
+        }
+    }
 }
 
 // MARK: - Bottom Tab Bar
@@ -774,28 +885,33 @@ struct BottomTabBar: View {
                         selectedTab = tab
                     }
                 }) {
-                    VStack(spacing: 4) {
+                    VStack(spacing: 6) {
                         Image(systemName: iconForTab(tab))
-                            .font(.system(size: 20))
+                            .font(.system(size: 21))
                             .foregroundColor(selectedTab == tab ? .green : theme.secondaryText)
-                        
+
                         Text(localization.dashboard(tab.rawValue))
-                            .font(.system(size: 12, weight: selectedTab == tab ? .semibold : .regular))
+                            .font(.system(size: 13.5, weight: selectedTab == tab ? .semibold : .regular))
                             .foregroundColor(selectedTab == tab ? .green : theme.secondaryText)
                     }
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
+                    .padding(.vertical, 8.4)
                 }
             }
         }
         .padding(.horizontal, 20)
-        .padding(.top, 16)
+        .padding(.top, 16.8)
         .padding(.bottom, 0)
         .background(
             Rectangle()
                 .fill(theme.tabBarBackground)
         )
-        .safeAreaPadding(.bottom) // Safe area 자동 처리
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(Color.white.opacity(0.1))
+                .frame(height: 0.5)
+        }
+        .ignoresSafeArea(edges: .bottom)
     }
     
     private func iconForTab(_ tab: TabItem) -> String {
@@ -1252,6 +1368,93 @@ struct LongShortRatioInfoSheet: View {
     }
 }
 
+// MARK: - MVRV Info Sheet
+struct MVRVInfoSheet: View {
+    @Environment(\.dismiss) var dismiss
+    @AppStorage("selectedLanguage") private var selectedLanguage: String = "ENG"
+
+    private var localization: Localization {
+        Localization.shared.language = selectedLanguage
+        return Localization.shared
+    }
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    // Header Icon
+                    HStack {
+                        Spacer()
+                        Circle()
+                            .fill(Color.blue.opacity(0.2))
+                            .frame(width: 80, height: 80)
+                            .overlay(
+                                Image(systemName: "chart.pie.fill")
+                                    .font(.system(size: 40, weight: .bold))
+                                    .foregroundColor(.blue)
+                            )
+                        Spacer()
+                    }
+                    .padding(.top, 20)
+
+                    // Title
+                    Text("MVRV")
+                        .font(.system(size: 28, weight: .bold))
+                        .foregroundColor(.primary)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
+
+                    // Description
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text(localization.infoSheet("What is MVRV?"))
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundColor(.primary)
+
+                        Text(localization.infoSheet("MVRV (Market Value to Realized Value) is a ratio that compares the current market value of Bitcoin to its realized value. Market value is the current market cap (price × supply), while realized value represents the average price at which all bitcoins were last moved on-chain."))
+                            .font(.system(size: 16))
+                            .foregroundColor(.secondary)
+                            .lineSpacing(4)
+
+                        Text(localization.infoSheet("Key Points"))
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundColor(.primary)
+                            .padding(.top, 8)
+
+                        VStack(alignment: .leading, spacing: 12) {
+                            InfoRow(icon: "arrow.up.arrow.down", title: localization.infoSheet("MVRV > 1.0"), description: localization.infoSheet("Market cap above average cost basis (profit)"))
+                            InfoRow(icon: "arrow.down.arrow.up", title: localization.infoSheet("MVRV < 1.0"), description: localization.infoSheet("Market cap below average cost basis (loss)"))
+                            InfoRow(icon: "flame.fill", title: localization.infoSheet("Market Top Indicator"), description: localization.infoSheet("Extreme MVRV readings can indicate overheated markets"))
+                            InfoRow(icon: "star.fill", title: localization.infoSheet("Value Accumulation"), description: localization.infoSheet("Low MVRV suggests long-term holders at a loss"))
+                        }
+
+                        Text(localization.infoSheet("How It Works"))
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundColor(.primary)
+                            .padding(.top, 8)
+
+                        Text(localization.infoSheet("MVRV is calculated by dividing the current market cap by the realized cap. When MVRV is high (above 3-4), the market may be overheated with investors holding significant profits, which historically has preceded market corrections. Conversely, when MVRV is low (below 1), it suggests that most holders are underwater, potentially indicating a market bottom or buying opportunity. MVRV helps identify periods when long-term investors are most likely to take profits or when capitulation is occurring."))
+                            .font(.system(size: 16))
+                            .foregroundColor(.secondary)
+                            .lineSpacing(4)
+                    }
+                    .padding(.horizontal, 20)
+                }
+                .padding(.bottom, 40)
+            }
+            .background(Color(.systemBackground))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(localization.common("Done")) {
+                        dismiss()
+                    }
+                    .foregroundColor(.blue)
+                }
+            }
+        }
+    }
+}
+
 // MARK: - Info Row
 struct InfoRow: View {
     let icon: String
@@ -1284,5 +1487,4 @@ struct InfoRow: View {
     CryptoDashboardView()
         .environmentObject(ThemeManager.shared)
 }
-
 

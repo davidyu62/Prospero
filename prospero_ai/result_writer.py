@@ -6,13 +6,14 @@
 
 import boto3
 import json
+import os
 from datetime import datetime
 from typing import Dict, Optional
 
 class ResultWriter:
     def __init__(self, region: str = "ap-northeast-2"):
         self.dynamodb = boto3.client("dynamodb", region_name=region)
-        self.table_name = "TB_AI_INSIGHT"
+        self.table_name = os.getenv("DYNAMODB_AI_TABLE", "TB_AI_INSIGHT")
 
     def write_analysis(self, date: str, analysis_result: Dict) -> None:
         """
@@ -54,15 +55,17 @@ class ResultWriter:
             "regime": {"S": analysis_result["regime"]},
             "regime_adjustment": {"N": str(analysis_result["regime_adjustment"])},
 
-            # 신호
+            # 신호 및 신뢰도 (v5.0)
             "signal_type": {"S": analysis_result["signal_type"]},
             "signal_color": {"S": analysis_result["signal_color"]},
+            "confidence_label": {"S": analysis_result.get("confidence_label", "Medium")},
 
-            # 지표별 점수 (v4.0 - 11개 지표)
+            # 지표별 점수 (v5.1 - 12개 지표)
             "btc_trend_score": {"N": str(analysis_result["btc_trend_score"])},
             "fear_greed_score": {"N": str(analysis_result["fear_greed_score"])},
             "long_short_score": {"N": str(analysis_result["long_short_score"])},
             "open_interest_score": {"N": str(analysis_result["open_interest_score"])},
+            "mvrv_score": {"N": str(analysis_result["mvrv_score"])},
             "interest_rate_score": {"N": str(analysis_result["interest_rate_score"])},
             "treasury10y_score": {"N": str(analysis_result["treasury10y_score"])},
             "m2_score": {"N": str(analysis_result["m2_score"])},
@@ -71,12 +74,24 @@ class ResultWriter:
             "cpi_score": {"N": str(analysis_result["cpi_score"])},
             "interaction_score": {"N": str(analysis_result["interaction_score"])},
 
-            # 분석 내용 (한국어)
-            "analysis_summary": {"S": analysis_result["analysis_summary"]},
+            # v5.0 연결 해석 분석 (한국어)
+            "cross_indicator_analysis": {"S": analysis_result.get("cross_indicator_analysis", "")},
+            "signal_rationale": {"S": analysis_result.get("signal_rationale", "")},
+            "bullish_factors": {"S": json.dumps(analysis_result.get("bullish_factors", []), ensure_ascii=False)},
+            "bearish_factors": {"S": json.dumps(analysis_result.get("bearish_factors", []), ensure_ascii=False)},
+            "confidence_reason": {"S": analysis_result.get("confidence_reason", "")},
+
+            # v5.0 연결 해석 분석 (영어)
+            "cross_indicator_analysis_en": {"S": analysis_result.get("cross_indicator_analysis_en", "")},
+            "signal_rationale_en": {"S": analysis_result.get("signal_rationale_en", "")},
+            "bullish_factors_en": {"S": json.dumps(analysis_result.get("bullish_factors_en", []), ensure_ascii=False)},
+            "bearish_factors_en": {"S": json.dumps(analysis_result.get("bearish_factors_en", []), ensure_ascii=False)},
+            "confidence_reason_en": {"S": analysis_result.get("confidence_reason_en", "")},
+
+            # 기존 분석 내용 (한국어)
             "indicator_explanations": {"S": json.dumps(analysis_result["indicator_explanations"], ensure_ascii=False)},
 
-            # 분석 내용 (영어)
-            "analysis_summary_en": {"S": analysis_result["analysis_summary_en"]},
+            # 기존 분석 내용 (영어)
             "indicator_explanations_en": {"S": json.dumps(analysis_result["indicator_explanations_en"], ensure_ascii=False)},
 
             # 타임스탬프
