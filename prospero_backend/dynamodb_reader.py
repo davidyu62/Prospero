@@ -20,7 +20,7 @@ def get_crypto_data_by_date(date: str) -> Optional[dict]:
     """
     TB_CRYPTO_DATA에서 특정 날짜 데이터 조회
     date: yyyyMMdd 형식
-    Returns: {btcPrice, longShortRatio, fearGreedIndex, openInterest} 또는 None
+    Returns: {btcPrice, longShortRatio, fearGreedIndex, openInterest, mvrv} 또는 None
     """
     crypto_table, _ = get_table_names()
     item = _query_latest_by_date(crypto_table, date)
@@ -113,6 +113,7 @@ def _item_to_crypto(item: dict) -> dict:
         "longShortRatio": _n_to_float(item.get("longShortRatio")),
         "fearGreedIndex": _n_to_int(item.get("fearGreedIndex")),
         "openInterest": _n_to_float(item.get("openInterest")),
+        "mvrv": _n_to_float(item.get("mvrv")),
     }
 
 
@@ -177,17 +178,60 @@ def _item_to_ai_analysis(item: dict) -> dict:
         except:
             explanations_en = {}
 
+    # v5.0 신규 필드들 파싱
+    bullish_factors_str = _s_to_str(item.get("bullish_factors"))
+    bullish_factors = []
+    if bullish_factors_str:
+        try:
+            bullish_factors = json.loads(bullish_factors_str)
+            if not isinstance(bullish_factors, list):
+                bullish_factors = []
+        except:
+            bullish_factors = []
+
+    bullish_factors_en_str = _s_to_str(item.get("bullish_factors_en"))
+    bullish_factors_en = []
+    if bullish_factors_en_str:
+        try:
+            bullish_factors_en = json.loads(bullish_factors_en_str)
+            if not isinstance(bullish_factors_en, list):
+                bullish_factors_en = []
+        except:
+            bullish_factors_en = []
+
+    bearish_factors_str = _s_to_str(item.get("bearish_factors"))
+    bearish_factors = []
+    if bearish_factors_str:
+        try:
+            bearish_factors = json.loads(bearish_factors_str)
+            if not isinstance(bearish_factors, list):
+                bearish_factors = []
+        except:
+            bearish_factors = []
+
+    bearish_factors_en_str = _s_to_str(item.get("bearish_factors_en"))
+    bearish_factors_en = []
+    if bearish_factors_en_str:
+        try:
+            bearish_factors_en = json.loads(bearish_factors_en_str)
+            if not isinstance(bearish_factors_en, list):
+                bearish_factors_en = []
+        except:
+            bearish_factors_en = []
+
     return {
         "date": _s_to_str(item.get("date")) or "",
         "total_score": _n_to_float(item.get("total_score")) or 0,
         "signal_type": _s_to_str(item.get("signal_type")) or "",
         "signal_color": _s_to_str(item.get("signal_color")) or "",
+        "confidence_label": _s_to_str(item.get("confidence_label")) or "Medium",
         "crypto_score": _n_to_float(item.get("crypto_score")) or 0,
         "macro_score": _n_to_float(item.get("macro_score")) or 0,
         "btc_trend_score": _n_to_float(item.get("btc_trend_score")) or 0,
         "fear_greed_score": _n_to_float(item.get("fear_greed_score")) or 0,
         "long_short_score": _n_to_float(item.get("long_short_score")) or 0,
         "open_interest_score": _n_to_float(item.get("open_interest_score")) or 0,
+        "mvrv_score": _n_to_float(item.get("mvrv_score")) or 0,
         "interest_rate_score": _n_to_float(item.get("interest_rate_score")) or 0,
         "treasury10y_score": _n_to_float(item.get("treasury10y_score")) or 0,
         "m2_score": _n_to_float(item.get("m2_score")) or 0,
@@ -195,8 +239,18 @@ def _item_to_ai_analysis(item: dict) -> dict:
         "unemployment_score": _n_to_float(item.get("unemployment_score")) or 0,
         "cpi_score": _n_to_float(item.get("cpi_score")) or 0,
         "interaction_score": _n_to_float(item.get("interaction_score")) or 0,
-        "analysis_summary": _s_to_str(item.get("analysis_summary")) or "",
-        "analysis_summary_en": _s_to_str(item.get("analysis_summary_en")) or "",
+        # v5.0 신규 필드들
+        "cross_indicator_analysis": _s_to_str(item.get("cross_indicator_analysis")) or "",
+        "cross_indicator_analysis_en": _s_to_str(item.get("cross_indicator_analysis_en")) or "",
+        "signal_rationale": _s_to_str(item.get("signal_rationale")) or "",
+        "signal_rationale_en": _s_to_str(item.get("signal_rationale_en")) or "",
+        "bullish_factors": bullish_factors,
+        "bullish_factors_en": bullish_factors_en,
+        "bearish_factors": bearish_factors,
+        "bearish_factors_en": bearish_factors_en,
+        "confidence_reason": _s_to_str(item.get("confidence_reason")) or "",
+        "confidence_reason_en": _s_to_str(item.get("confidence_reason_en")) or "",
+        # 기존 필드
         "indicator_explanations": explanations,
         "indicator_explanations_en": explanations_en,
     }
@@ -206,7 +260,7 @@ def get_crypto_data_7days(date: str) -> dict:
     """
     TB_CRYPTO_DATA에서 특정 날짜부터 과거 7일 데이터 조회
     date: yyyyMMdd 형식
-    Returns: {dates: [], btcPrices: [], fearGreedIndices: [], ...}
+    Returns: {dates: [], btcPrices: [], fearGreedIndices: [], openInterests: [], mvrvs: []}
     """
     from datetime import datetime, timedelta
 
@@ -232,6 +286,7 @@ def get_crypto_data_7days(date: str) -> dict:
         "longShortRatios": [d["longShortRatio"] for d in data_list],
         "fearGreedIndices": [d["fearGreedIndex"] for d in data_list],
         "openInterests": [d["openInterest"] for d in data_list],
+        "mvrvs": [d["mvrv"] for d in data_list],
     }
 
 
@@ -243,4 +298,5 @@ def _item_to_crypto_with_date(date: str, item: dict) -> dict:
         "longShortRatio": _n_to_float(item.get("longShortRatio")) or 0,
         "fearGreedIndex": _n_to_int(item.get("fearGreedIndex")) or 0,
         "openInterest": _n_to_float(item.get("openInterest")) or 0,
+        "mvrv": _n_to_float(item.get("mvrv")) or 0,
     }

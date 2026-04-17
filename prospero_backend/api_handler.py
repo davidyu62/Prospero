@@ -165,6 +165,7 @@ def _crypto_to_item(date: str, data: dict | None) -> dict | None:
         "longShortRatio": data.get("longShortRatio"),
         "fearGreedIndex": data.get("fearGreedIndex"),
         "openInterest": data.get("openInterest"),
+        "mvrv": data.get("mvrv"),
     }
 
 
