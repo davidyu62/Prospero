@@ -94,11 +94,12 @@ def main():
         print(f"✅ 시장국면(Regime): {analysis_result['regime']}")
         print(f"✅ 국면 조정: {analysis_result['regime_adjustment']:+.1f}점")
         print(f"✅ 상호작용 점수: {analysis_result['interaction_score']:+.1f}점")
-        print(f"\n지표별 점수 (11개):")
+        print(f"\n지표별 점수 (12개):")
         print(f"  - BTC 추세: {analysis_result['btc_trend_score']:.2f}/10")
         print(f"  - 공포탐욕지수: {analysis_result['fear_greed_score']:.2f}/20")
         print(f"  - 롱숏비율: {analysis_result['long_short_score']:.2f}/15")
         print(f"  - OI+가격: {analysis_result['open_interest_score']:.2f}/10")
+        print(f"  - MVRV: {analysis_result['mvrv_score']:.2f}/5")
         print(f"  - 기준금리: {analysis_result['interest_rate_score']:.2f}/10")
         print(f"  - 10년물금리: {analysis_result['treasury10y_score']:.2f}/8")
         print(f"  - M2: {analysis_result['m2_score']:.2f}/8")
@@ -107,8 +108,49 @@ def main():
         print(f"  - CPI: {analysis_result['cpi_score']:.2f}/3")
         print(f"  - 상호작용: {analysis_result['interaction_score']:.2f}/5")
 
-        # 5. DynamoDB 저장 (선택사항)
-        print("\n💾 Step 5: DynamoDB 저장 (선택사항)")
+        # 5. 분석 설명 출력
+        print("\n📝 Step 5: 분석 설명")
+        print("-" * 60)
+
+        # 연결 해석
+        if analysis_result.get('cross_indicator_analysis'):
+            print(f"🔗 Cross-Indicator Analysis (한국어):")
+            print(f"   {analysis_result['cross_indicator_analysis']}\n")
+
+        # 신호 근거
+        if analysis_result.get('signal_rationale'):
+            print(f"💡 Signal Rationale (한국어):")
+            print(f"   {analysis_result['signal_rationale']}\n")
+
+        # 강세 요인
+        if analysis_result.get('bullish_factors'):
+            print(f"📈 Bullish Factors:")
+            for factor in analysis_result['bullish_factors']:
+                print(f"   • {factor}")
+            print()
+
+        # 약세 요인
+        if analysis_result.get('bearish_factors'):
+            print(f"📉 Bearish Factors:")
+            for factor in analysis_result['bearish_factors']:
+                print(f"   • {factor}")
+            print()
+
+        # 신뢰도 이유
+        if analysis_result.get('confidence_reason'):
+            print(f"🎯 Confidence Reason:")
+            print(f"   {analysis_result['confidence_reason']}\n")
+
+        # 지표 설명
+        if analysis_result.get('indicator_explanations'):
+            print(f"📚 Indicator Explanations:")
+            explanations = analysis_result['indicator_explanations']
+            for indicator, explanation in explanations.items():
+                print(f"   {indicator}: {explanation}")
+            print()
+
+        # 6. DynamoDB 저장 (선택사항)
+        print("\n💾 Step 6: DynamoDB 저장 (선택사항)")
         print("-" * 60)
         save_choice = input("결과를 DynamoDB에 저장하시겠습니까? (y/n): ").strip().lower()
         if save_choice == 'y':
@@ -118,9 +160,9 @@ def main():
         else:
             print("⏭️  저장을 건너뜁니다.")
 
-        # 6. 전체 결과 JSON 출력
+        # 7. 전체 결과 JSON 출력
         print("\n" + "="*60)
-        print("📄 전체 분석 결과 (JSON)")
+        print("📄 Step 7: 전체 분석 결과 (JSON)")
         print("="*60)
         print(json.dumps(analysis_result, indent=2, ensure_ascii=False))
 
