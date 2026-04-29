@@ -1,7 +1,7 @@
 package com.prospero.controller;
 
 import com.prospero.dto.CryptoNews;
-import com.prospero.service.CryptoPanicService;
+import com.prospero.service.CoinDeskService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -17,21 +17,21 @@ import java.util.Map;
 @Slf4j
 public class NewsController {
 
-    private final CryptoPanicService cryptoPanicService;
+    private final CoinDeskService coinDeskService;
 
     /**
-     * 특정 날짜의 핫 뉴스 조회
+     * 특정 날짜의 뉴스 조회
      *
      * @param date 조회 날짜 (yyyyMMdd 형식, 예: 20260429)
-     * @return 해당 날짜의 핫 뉴스 목록
+     * @return 해당 날짜의 뉴스 목록
      */
-    @GetMapping("/hot-by-date")
-    public ResponseEntity<Map<String, Object>> getHotNewsByDate(
+    @GetMapping("/by-date")
+    public ResponseEntity<Map<String, Object>> getNewsByDate(
             @RequestParam(defaultValue = "") String date) {
-        log.info("핫 뉴스 조회 요청 - 날짜: {}", date);
+        log.info("뉴스 조회 요청 - 날짜: {}", date);
 
         try {
-            List<CryptoNews> newsList = cryptoPanicService.getHotNewsByDate(date);
+            List<CryptoNews> newsList = coinDeskService.getNewsByDate(date);
 
             Map<String, Object> response = new HashMap<>();
             response.put("date", date);
@@ -47,18 +47,18 @@ public class NewsController {
     }
 
     /**
-     * 최근 핫 뉴스 조회
+     * 최근 뉴스 조회
      *
      * @param limit 조회 건수 (기본값: 30)
-     * @return 최근 핫 뉴스 목록
+     * @return 최근 뉴스 목록
      */
     @GetMapping("/latest")
-    public ResponseEntity<Map<String, Object>> getLatestHotNews(
+    public ResponseEntity<Map<String, Object>> getLatestNews(
             @RequestParam(defaultValue = "30") int limit) {
-        log.info("최근 핫 뉴스 조회 요청 - 건수: {}", limit);
+        log.info("최근 뉴스 조회 요청 - 건수: {}", limit);
 
         try {
-            List<CryptoNews> newsList = cryptoPanicService.getLatestHotNews(limit);
+            List<CryptoNews> newsList = coinDeskService.getLatestNews(limit);
 
             Map<String, Object> response = new HashMap<>();
             response.put("count", newsList.size());

@@ -15,7 +15,7 @@ import java.util.List;
 @Builder
 public class CryptoNews {
 
-    private Long id;
+    private String id;
 
     private String title;
 
@@ -23,23 +23,13 @@ public class CryptoNews {
 
     private String url;
 
-    @JsonProperty("created_at")
-    private LocalDateTime createdAt;
+    @JsonProperty("published_at")
+    private LocalDateTime publishedAt;
 
     private String source;
 
-    private String kind;
+    private String image;
 
-    private List<Cryptocurrency> currencies;
-
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class Cryptocurrency {
-        @JsonProperty("code")
-        private String code;
-
-        @JsonProperty("title")
-        private String title;
-    }
+    @JsonProperty("categories")
+    private List<String> categories;
 }

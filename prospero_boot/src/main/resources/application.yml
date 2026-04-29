@@ -27,6 +27,6 @@ logging:
     root: INFO
     com.prospero: DEBUG
 
-cryptopanic:
+coindesk:
   api:
-    key: ${CRYPTOPANIC_API_KEY:default}
+    key: c8ab9e6fb8bb7a4bc1137dc540f784dc7915037f9078b02f5e7477bc5ddefcbc
