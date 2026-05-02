@@ -14,4 +14,4 @@ logging:
 
 fred:
   api:
-    key: ${FRED_API_KEY:}
+    key: 034103dc7fa899c718ba019967c60740

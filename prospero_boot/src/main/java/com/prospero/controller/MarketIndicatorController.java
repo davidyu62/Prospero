@@ -25,8 +25,12 @@ public class MarketIndicatorController {
         log.info("펀딩비 조회");
         try {
             Double fundingRate = binanceService.getFundingRate();
+            // 과학 표기법 방지: 6자리 소수점
+            String formattedRate = fundingRate != null ?
+                    String.format("%.6f", fundingRate) :
+                    null;
             return ResponseEntity.ok(Map.of(
-                    "fundingRate", fundingRate,
+                    "fundingRate", formattedRate,
                     "symbol", "BTCUSDT",
                     "unit", "percentage"
             ));

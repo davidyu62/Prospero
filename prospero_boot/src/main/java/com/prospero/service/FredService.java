@@ -74,6 +74,11 @@ public class FredService {
     }
 
     public Double getIndicator(String date, String indicatorName) {
+        if (fredApiKey == null || fredApiKey.isEmpty()) {
+            log.error("FRED API 키가 설정되지 않았습니다. FRED_API_KEY 환경변수를 설정해주세요.");
+            throw new RuntimeException("FRED API 키가 없습니다. 환경변수 FRED_API_KEY를 설정해주세요.");
+        }
+
         LocalDate targetDate = parseDate(date);
         DateTimeFormatter formatter = DateTimeFormatter.ISO_DATE;
         LocalDate startDate = targetDate.minusDays(60);
@@ -105,6 +110,14 @@ public class FredService {
             String response = restTemplate.getForObject(url, String.class);
             JsonNode jsonResponse = objectMapper.readTree(response);
 
+            // 에러 응답 확인
+            if (jsonResponse.has("error_code")) {
+                String errorMsg = jsonResponse.has("error_message") ?
+                    jsonResponse.get("error_message").asText() : "Unknown error";
+                log.error("FRED API 에러 ({}) - {}", seriesId, errorMsg);
+                return null;
+            }
+
             JsonNode observations = jsonResponse.get("observations");
             if (observations != null && observations.isArray() && observations.size() > 0) {
                 JsonNode firstObs = observations.get(0);
@@ -118,10 +131,10 @@ public class FredService {
                 }
             }
 
-            log.warn("FRED {} 데이터를 찾을 수 없음", seriesId);
+            log.warn("FRED {} 데이터를 찾을 수 없음 (조회 범위: {} ~ {})", seriesId, startDate, endDate);
             return null;
         } catch (Exception e) {
-            log.error("FRED {} 조회 중 오류 발생", seriesId, e);
+            log.error("FRED {} 조회 중 오류 발생: {}", seriesId, e.getMessage(), e);
             return null;
         }
     }
