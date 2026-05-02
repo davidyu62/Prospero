@@ -37,16 +37,6 @@ GET {{baseUrl}}/api/indicators/vix?date=20260502
 
 ###
 
-### 금 가격 - 오늘
-GET {{baseUrl}}/api/indicators/gold
-
-###
-
-### 금 가격 - 특정 날짜
-GET {{baseUrl}}/api/indicators/gold?date=20260501
-
-###
-
 ### WTI 원유 - 오늘
 GET {{baseUrl}}/api/indicators/oil
 

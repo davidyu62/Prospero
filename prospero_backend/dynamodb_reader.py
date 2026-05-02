@@ -33,7 +33,7 @@ def get_macro_data_by_date(date: str) -> Optional[dict]:
     """
     TB_MACRO_DATA에서 특정 날짜 데이터 조회
     date: yyyyMMdd 형식
-    Returns: {interestRate, treasury10y, cpi, m2, unemployment, dollarIndex, vix, goldPrice, oilPrice, yieldSpread, breakEvenInflation} 또는 None
+    Returns: {interestRate, treasury10y, cpi, m2, unemployment, dollarIndex, vix, oilPrice, yieldSpread, breakEvenInflation} 또는 None
     """
     _, macro_table = get_table_names()
     item = _query_latest_by_date(macro_table, date)
@@ -129,7 +129,6 @@ def _item_to_macro(item: dict) -> dict:
         "unemployment": _n_to_float(item.get("unemployment")),
         "dollarIndex": _n_to_float(item.get("dollarIndex")),
         "vix": _n_to_float(item.get("vix")),
-        "goldPrice": _n_to_float(item.get("goldPrice")),
         "oilPrice": _n_to_float(item.get("oilPrice")),
         "yieldSpread": _n_to_float(item.get("yieldSpread")),
         "breakEvenInflation": _n_to_float(item.get("breakEvenInflation")),

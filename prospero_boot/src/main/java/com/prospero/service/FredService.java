@@ -31,7 +31,6 @@ public class FredService {
 
     static {
         FRED_SERIES.put("vix", "VIXCLS");
-        FRED_SERIES.put("goldPrice", "MMNRNJ");  // Gold Reserves (월간)
         FRED_SERIES.put("oilPrice", "DCOILWTICO");
         FRED_SERIES.put("yieldSpread", "T10Y2Y");
         FRED_SERIES.put("breakEvenInflation", "T10YIE");

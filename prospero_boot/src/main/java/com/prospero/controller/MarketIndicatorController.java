@@ -99,34 +99,7 @@ public class MarketIndicatorController {
         }
     }
 
-    @GetMapping("/gold")
-    public ResponseEntity<Map<String, Object>> getGoldPrice(
-            @RequestParam(required = false) String date) {
-        log.info("금 가격 조회 - 날짜: {}", date != null ? date : "오늘");
-        try {
-            Double goldPrice = fredService.getIndicator(date != null ? date : "", "goldPrice");
-            if (goldPrice == null) {
-                return ResponseEntity.ok(Map.of(
-                        "goldPrice", "데이터 없음",
-                        "seriesId", "MMNRNJ",
-                        "type", "Gold Reserves",
-                        "unit", "millions of troy ounces",
-                        "note", "해당 날짜의 데이터가 없습니다"
-                ));
-            }
-            return ResponseEntity.ok(Map.of(
-                    "goldPrice", goldPrice,
-                    "seriesId", "MMNRNJ",
-                    "type", "Gold Reserves",
-                    "unit", "millions of troy ounces"
-            ));
-        } catch (Exception e) {
-            log.error("금 가격 조회 중 오류 발생", e);
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
-    }
-
-    @GetMapping("/oil")
+@GetMapping("/oil")
     public ResponseEntity<Map<String, Object>> getOilPrice(
             @RequestParam(required = false) String date) {
         log.info("WTI 원유 조회 - 날짜: {}", date != null ? date : "오늘");

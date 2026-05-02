@@ -209,7 +209,6 @@ def _macro_to_item(date: str, data: dict | None) -> dict | None:
         "unemployment": data.get("unemployment"),
         "dollarIndex": data.get("dollarIndex"),
         "vix": data.get("vix"),
-        "goldPrice": data.get("goldPrice"),
         "oilPrice": data.get("oilPrice"),
         "yieldSpread": data.get("yieldSpread"),
         "breakEvenInflation": data.get("breakEvenInflation"),
