@@ -108,15 +108,17 @@ public class MarketIndicatorController {
             if (goldPrice == null) {
                 return ResponseEntity.ok(Map.of(
                         "goldPrice", "데이터 없음",
-                        "seriesId", "GOLDAMGBD228NLBM",
-                        "unit", "USD per troy ounce",
-                        "note", "해당 날짜의 데이터가 없거나 Series ID가 변경되었을 수 있습니다"
+                        "seriesId", "MMNRNJ",
+                        "type", "Gold Reserves",
+                        "unit", "millions of troy ounces",
+                        "note", "해당 날짜의 데이터가 없습니다"
                 ));
             }
             return ResponseEntity.ok(Map.of(
                     "goldPrice", goldPrice,
-                    "seriesId", "GOLDAMGBD228NLBM",
-                    "unit", "USD per troy ounce"
+                    "seriesId", "MMNRNJ",
+                    "type", "Gold Reserves",
+                    "unit", "millions of troy ounces"
             ));
         } catch (Exception e) {
             log.error("금 가격 조회 중 오류 발생", e);

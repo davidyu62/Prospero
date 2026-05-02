@@ -6,6 +6,7 @@ import com.prospero.dto.MacroIndicatorResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -30,7 +31,7 @@ public class FredService {
 
     static {
         FRED_SERIES.put("vix", "VIXCLS");
-        FRED_SERIES.put("goldPrice", "GOLDAMGBD228NLBM");
+        FRED_SERIES.put("goldPrice", "MMNRNJ");  // Gold Reserves (월간)
         FRED_SERIES.put("oilPrice", "DCOILWTICO");
         FRED_SERIES.put("yieldSpread", "T10Y2Y");
         FRED_SERIES.put("breakEvenInflation", "T10YIE");
@@ -132,6 +133,9 @@ public class FredService {
             }
 
             log.warn("FRED {} 데이터를 찾을 수 없음 (조회 범위: {} ~ {})", seriesId, startDate, endDate);
+            return null;
+        } catch (HttpClientErrorException e) {
+            log.error("FRED {} HTTP 에러 ({}): {}", seriesId, e.getStatusCode(), e.getMessage());
             return null;
         } catch (Exception e) {
             log.error("FRED {} 조회 중 오류 발생: {}", seriesId, e.getMessage(), e);
