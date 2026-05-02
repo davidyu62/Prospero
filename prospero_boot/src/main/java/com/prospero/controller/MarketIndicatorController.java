@@ -1,7 +1,5 @@
 package com.prospero.controller;
 
-import com.prospero.dto.CryptoIndicatorResponse;
-import com.prospero.dto.MacroIndicatorResponse;
 import com.prospero.service.BinanceService;
 import com.prospero.service.CoinMetricsService;
 import com.prospero.service.FredService;
@@ -10,8 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/indicators")
@@ -23,43 +20,141 @@ public class MarketIndicatorController {
     private final CoinMetricsService coinMetricsService;
     private final FredService fredService;
 
-    @GetMapping("/crypto")
-    public ResponseEntity<CryptoIndicatorResponse> getCryptoIndicators(
-            @RequestParam(required = false) String date) {
-        log.info("암호화폐 지표 조회 - 날짜: {}", date != null ? date : "오늘");
-
+    @GetMapping("/funding-rate")
+    public ResponseEntity<Map<String, Object>> getFundingRate() {
+        log.info("펀딩비 조회");
         try {
             Double fundingRate = binanceService.getFundingRate();
-            Long activeAddresses = coinMetricsService.getActiveAddresses(date != null ? date : "");
-            Double mvrv = coinMetricsService.getMvrv(date != null ? date : "");
-
-            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME);
-
-            CryptoIndicatorResponse response = CryptoIndicatorResponse.builder()
-                    .fundingRate(fundingRate)
-                    .activeAddresses(activeAddresses)
-                    .mvrv(mvrv)
-                    .timestamp(timestamp)
-                    .build();
-
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(Map.of(
+                    "fundingRate", fundingRate,
+                    "symbol", "BTCUSDT",
+                    "unit", "percentage"
+            ));
         } catch (Exception e) {
-            log.error("암호화폐 지표 조회 중 오류 발생", e);
-            return ResponseEntity.badRequest().build();
+            log.error("펀딩비 조회 중 오류 발생", e);
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 
-    @GetMapping("/macro")
-    public ResponseEntity<MacroIndicatorResponse> getMacroIndicators(
+    @GetMapping("/active-addresses")
+    public ResponseEntity<Map<String, Object>> getActiveAddresses(
             @RequestParam(required = false) String date) {
-        log.info("거시경제 지표 조회 - 날짜: {}", date != null ? date : "오늘");
-
+        log.info("활성 주소 수 조회 - 날짜: {}", date != null ? date : "오늘");
         try {
-            MacroIndicatorResponse response = fredService.getMacroIndicators(date != null ? date : "");
-            return ResponseEntity.ok(response);
+            Long activeAddresses = coinMetricsService.getActiveAddresses(date != null ? date : "");
+            return ResponseEntity.ok(Map.of(
+                    "activeAddresses", activeAddresses,
+                    "asset", "btc",
+                    "unit", "count"
+            ));
         } catch (Exception e) {
-            log.error("거시경제 지표 조회 중 오류 발생", e);
-            return ResponseEntity.badRequest().build();
+            log.error("활성 주소 수 조회 중 오류 발생", e);
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/mvrv")
+    public ResponseEntity<Map<String, Object>> getMvrv(
+            @RequestParam(required = false) String date) {
+        log.info("MVRV 조회 - 날짜: {}", date != null ? date : "오늘");
+        try {
+            Double mvrv = coinMetricsService.getMvrv(date != null ? date : "");
+            return ResponseEntity.ok(Map.of(
+                    "mvrv", mvrv,
+                    "asset", "btc",
+                    "meaning", "Market Value to Realized Value"
+            ));
+        } catch (Exception e) {
+            log.error("MVRV 조회 중 오류 발생", e);
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/vix")
+    public ResponseEntity<Map<String, Object>> getVix(
+            @RequestParam(required = false) String date) {
+        log.info("VIX 조회 - 날짜: {}", date != null ? date : "오늘");
+        try {
+            Double vix = fredService.getIndicator(date != null ? date : "", "vix");
+            return ResponseEntity.ok(Map.of(
+                    "vix", vix,
+                    "seriesId", "VIXCLS",
+                    "meaning", "Volatility Index"
+            ));
+        } catch (Exception e) {
+            log.error("VIX 조회 중 오류 발생", e);
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/gold")
+    public ResponseEntity<Map<String, Object>> getGoldPrice(
+            @RequestParam(required = false) String date) {
+        log.info("금 가격 조회 - 날짜: {}", date != null ? date : "오늘");
+        try {
+            Double goldPrice = fredService.getIndicator(date != null ? date : "", "goldPrice");
+            return ResponseEntity.ok(Map.of(
+                    "goldPrice", goldPrice,
+                    "seriesId", "GOLDAMGBD228NLBM",
+                    "unit", "USD per troy ounce"
+            ));
+        } catch (Exception e) {
+            log.error("금 가격 조회 중 오류 발생", e);
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/oil")
+    public ResponseEntity<Map<String, Object>> getOilPrice(
+            @RequestParam(required = false) String date) {
+        log.info("WTI 원유 조회 - 날짜: {}", date != null ? date : "오늘");
+        try {
+            Double oilPrice = fredService.getIndicator(date != null ? date : "", "oilPrice");
+            return ResponseEntity.ok(Map.of(
+                    "oilPrice", oilPrice,
+                    "seriesId", "DCOILWTICO",
+                    "type", "WTI Crude Oil",
+                    "unit", "USD per barrel"
+            ));
+        } catch (Exception e) {
+            log.error("원유 가격 조회 중 오류 발생", e);
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/yield-spread")
+    public ResponseEntity<Map<String, Object>> getYieldSpread(
+            @RequestParam(required = false) String date) {
+        log.info("10Y-2Y 금리차 조회 - 날짜: {}", date != null ? date : "오늘");
+        try {
+            Double yieldSpread = fredService.getIndicator(date != null ? date : "", "yieldSpread");
+            return ResponseEntity.ok(Map.of(
+                    "yieldSpread", yieldSpread,
+                    "seriesId", "T10Y2Y",
+                    "meaning", "10-Year minus 2-Year Treasury Yield Spread",
+                    "unit", "percentage points"
+            ));
+        } catch (Exception e) {
+            log.error("금리차 조회 중 오류 발생", e);
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/breakeven-inflation")
+    public ResponseEntity<Map<String, Object>> getBreakevenInflation(
+            @RequestParam(required = false) String date) {
+        log.info("기대 인플레이션 조회 - 날짜: {}", date != null ? date : "오늘");
+        try {
+            Double breakEvenInflation = fredService.getIndicator(date != null ? date : "", "breakEvenInflation");
+            return ResponseEntity.ok(Map.of(
+                    "breakEvenInflation", breakEvenInflation,
+                    "seriesId", "T10YIE",
+                    "meaning", "10-Year Breakeven Inflation Rate",
+                    "unit", "percentage"
+            ));
+        } catch (Exception e) {
+            log.error("기대 인플레이션 조회 중 오류 발생", e);
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 }

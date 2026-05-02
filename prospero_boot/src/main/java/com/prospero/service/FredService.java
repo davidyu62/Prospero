@@ -73,6 +73,20 @@ public class FredService {
         return builder.build();
     }
 
+    public Double getIndicator(String date, String indicatorName) {
+        LocalDate targetDate = parseDate(date);
+        DateTimeFormatter formatter = DateTimeFormatter.ISO_DATE;
+        LocalDate startDate = targetDate.minusDays(60);
+
+        String seriesId = FRED_SERIES.get(indicatorName);
+        if (seriesId == null) {
+            log.warn("지원하지 않는 지표: {}", indicatorName);
+            return null;
+        }
+
+        return fetchFredValue(seriesId, startDate, targetDate, formatter);
+    }
+
     private Double fetchFredValue(String seriesId, LocalDate startDate, LocalDate endDate, DateTimeFormatter formatter) {
         try {
             String url = UriComponentsBuilder.fromHttpUrl(FRED_API_URL)
