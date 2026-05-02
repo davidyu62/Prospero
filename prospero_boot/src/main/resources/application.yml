@@ -1,21 +1,6 @@
 spring:
   application:
     name: prospero-boot
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: false
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.H2Dialect
-  datasource:
-    url: jdbc:h2:mem:prospero
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
-  h2:
-    console:
-      enabled: true
 
 server:
   port: 8080
@@ -27,6 +12,6 @@ logging:
     root: INFO
     com.prospero: DEBUG
 
-coindesk:
+fred:
   api:
-    key: c8ab9e6fb8bb7a4bc1137dc540f784dc7915037f9078b02f5e7477bc5ddefcbc
+    key: ${FRED_API_KEY:}

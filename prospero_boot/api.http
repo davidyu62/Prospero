@@ -9,7 +9,7 @@ GET {{baseUrl}}/api/news/latest?limit=30
 ###
 
 ### 최근 뉴스 10개 조회
-GET {{baseUrl}}/api/news/latest?limit=10
+GET {{baseUrl}}/api/news/latest?limit=1s
 
 ###
 

@@ -14,7 +14,7 @@ def get_crypto_data(date: str) -> Optional[dict]:
     """
     크립토 데이터 조회
     date: yyyyMMdd 형식
-    Returns: {btcPrice, longShortRatio, exchangeBalance, fearGreedIndex, openInterest, mvrv}
+    Returns: {btcPrice, longShortRatio, exchangeBalance, fearGreedIndex, openInterest, mvrv, fundingRate, activeAddresses}
     """
     try:
         btc_price = _get_btc_price()
@@ -23,6 +23,8 @@ def get_crypto_data(date: str) -> Optional[dict]:
         fear_greed_index = _get_fear_greed_index()
         open_interest = _get_open_interest()
         mvrv = _get_mvrv(date)
+        funding_rate = _get_funding_rate()
+        active_addresses = _get_active_addresses(date)
 
         print(f"\n[INFO] 크립토 데이터 수집 결과:")
         print(f"  btcPrice: {btc_price if btc_price is not None else '없음'}")
@@ -30,7 +32,9 @@ def get_crypto_data(date: str) -> Optional[dict]:
         print(f"  exchangeBalance: {exchange_balance if exchange_balance is not None else '없음'}")
         print(f"  fearGreedIndex: {fear_greed_index if fear_greed_index is not None else '없음'}")
         print(f"  openInterest: {open_interest if open_interest is not None else '없음'}")
-        print(f"  mvrv: {mvrv if mvrv is not None else '없음'}\n")
+        print(f"  mvrv: {mvrv if mvrv is not None else '없음'}")
+        print(f"  fundingRate: {funding_rate if funding_rate is not None else '없음'}")
+        print(f"  activeAddresses: {active_addresses if active_addresses is not None else '없음'}\n")
 
         result = {}
         if btc_price is not None:
@@ -45,6 +49,10 @@ def get_crypto_data(date: str) -> Optional[dict]:
             result["openInterest"] = open_interest
         if mvrv is not None:
             result["mvrv"] = mvrv
+        if funding_rate is not None:
+            result["fundingRate"] = funding_rate
+        if active_addresses is not None:
+            result["activeAddresses"] = active_addresses
 
         return result if result else None
     except Exception as e:
@@ -182,4 +190,69 @@ def _get_open_interest() -> Optional[Decimal]:
             print(f"[WARN] Open Interest: 응답에 openInterest 키 없음. 응답: {data}")
     except Exception as e:
         print(f"[WARN] Open Interest 조회 실패: {e}")
+    return None
+
+
+def _get_funding_rate() -> Optional[Decimal]:
+    """Binance Futures API - BTC 펀딩비 (8시간 주기)"""
+    try:
+        r = requests.get(
+            "https://fapi.binance.com/fapi/v1/fundingRate?symbol=BTCUSDT&limit=1",
+            timeout=10,
+        )
+        r.raise_for_status()
+        data = r.json()
+        if data and isinstance(data, list) and len(data) > 0:
+            item = data[0]
+            funding_rate = item.get("fundingRate")
+            if funding_rate:
+                result = Decimal(str(funding_rate)).quantize(Decimal("0.000001"))
+                print(f"[INFO] Funding Rate 조회 성공: {result}")
+                return result
+            else:
+                print(f"[WARN] Funding Rate: 응답에 fundingRate 키 없음. 응답: {item}")
+        else:
+            print(f"[WARN] Funding Rate: 응답이 빈 리스트 또는 형식 오류. 응답: {data}")
+    except Exception as e:
+        print(f"[WARN] Funding Rate 조회 실패: {e}")
+    return None
+
+
+def _get_active_addresses(date: str) -> Optional[int]:
+    """CoinMetrics Community API - BTC 활성 주소 수 (AdrActCnt)"""
+    try:
+        # yyyyMMdd → yyyy-MM-dd 변환
+        formatted_date = f"{date[:4]}-{date[4:6]}-{date[6:8]}"
+        # 당일 데이터가 없을 수 있으므로 3일치 조회 후 최신값 사용
+        start_date = (datetime.strptime(date, "%Y%m%d") - timedelta(days=3)).strftime("%Y-%m-%d")
+
+        r = requests.get(
+            "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics",
+            params={
+                "assets": "btc",
+                "metrics": "AdrActCnt",
+                "frequency": "1d",
+                "start_time": f"{start_date}T00:00:00Z",
+                "end_time": f"{formatted_date}T23:59:59Z",
+                "page_size": 5,
+            },
+            timeout=10,
+        )
+        r.raise_for_status()
+        data = r.json()
+
+        items = data.get("data", [])
+        if items:
+            latest = items[-1]
+            value = latest.get("AdrActCnt")
+            if value:
+                result = int(float(value))
+                print(f"[INFO] Active Addresses 조회 성공: {result}")
+                return result
+            else:
+                print(f"[WARN] Active Addresses: 응답에 AdrActCnt 값 없음. 응답: {latest}")
+        else:
+            print(f"[WARN] Active Addresses: 데이터 없음. 응답: {data}")
+    except Exception as e:
+        print(f"[WARN] Active Addresses 조회 실패: {e}")
     return None

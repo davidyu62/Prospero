@@ -11,7 +11,7 @@
     <packaging>jar</packaging>
 
     <name>Prospero Boot</name>
-    <description>CryptoPanic API 기반 암호화폐 핫 뉴스 조회 서비스</description>
+    <description>실시간 암호화폐 및 거시경제 지표 조회 서비스</description>
 
     <parent>
         <groupId>org.springframework.boot</groupId>
@@ -32,19 +32,6 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
-        </dependency>
-
-        <!-- Spring Boot Data -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jpa</artifactId>
-        </dependency>
-
-        <!-- H2 Database (개발/테스트용) -->
-        <dependency>
-            <groupId>com.h2database</groupId>
-            <artifactId>h2</artifactId>
-            <scope>runtime</scope>
         </dependency>
 
         <!-- Lombok -->
