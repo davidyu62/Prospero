@@ -80,6 +80,14 @@ public class MarketIndicatorController {
         log.info("VIX 조회 - 날짜: {}", date != null ? date : "오늘");
         try {
             Double vix = fredService.getIndicator(date != null ? date : "", "vix");
+            if (vix == null) {
+                return ResponseEntity.ok(Map.of(
+                        "vix", "데이터 없음",
+                        "seriesId", "VIXCLS",
+                        "meaning", "Volatility Index",
+                        "note", "해당 날짜의 데이터가 없습니다"
+                ));
+            }
             return ResponseEntity.ok(Map.of(
                     "vix", vix,
                     "seriesId", "VIXCLS",
@@ -97,6 +105,14 @@ public class MarketIndicatorController {
         log.info("금 가격 조회 - 날짜: {}", date != null ? date : "오늘");
         try {
             Double goldPrice = fredService.getIndicator(date != null ? date : "", "goldPrice");
+            if (goldPrice == null) {
+                return ResponseEntity.ok(Map.of(
+                        "goldPrice", "데이터 없음",
+                        "seriesId", "GOLDAMGBD228NLBM",
+                        "unit", "USD per troy ounce",
+                        "note", "해당 날짜의 데이터가 없거나 Series ID가 변경되었을 수 있습니다"
+                ));
+            }
             return ResponseEntity.ok(Map.of(
                     "goldPrice", goldPrice,
                     "seriesId", "GOLDAMGBD228NLBM",
@@ -114,6 +130,15 @@ public class MarketIndicatorController {
         log.info("WTI 원유 조회 - 날짜: {}", date != null ? date : "오늘");
         try {
             Double oilPrice = fredService.getIndicator(date != null ? date : "", "oilPrice");
+            if (oilPrice == null) {
+                return ResponseEntity.ok(Map.of(
+                        "oilPrice", "데이터 없음",
+                        "seriesId", "DCOILWTICO",
+                        "type", "WTI Crude Oil",
+                        "unit", "USD per barrel",
+                        "note", "해당 날짜의 데이터가 없습니다"
+                ));
+            }
             return ResponseEntity.ok(Map.of(
                     "oilPrice", oilPrice,
                     "seriesId", "DCOILWTICO",
@@ -132,6 +157,15 @@ public class MarketIndicatorController {
         log.info("10Y-2Y 금리차 조회 - 날짜: {}", date != null ? date : "오늘");
         try {
             Double yieldSpread = fredService.getIndicator(date != null ? date : "", "yieldSpread");
+            if (yieldSpread == null) {
+                return ResponseEntity.ok(Map.of(
+                        "yieldSpread", "데이터 없음",
+                        "seriesId", "T10Y2Y",
+                        "meaning", "10-Year minus 2-Year Treasury Yield Spread",
+                        "unit", "percentage points",
+                        "note", "해당 날짜의 데이터가 없습니다"
+                ));
+            }
             return ResponseEntity.ok(Map.of(
                     "yieldSpread", yieldSpread,
                     "seriesId", "T10Y2Y",
@@ -150,6 +184,15 @@ public class MarketIndicatorController {
         log.info("기대 인플레이션 조회 - 날짜: {}", date != null ? date : "오늘");
         try {
             Double breakEvenInflation = fredService.getIndicator(date != null ? date : "", "breakEvenInflation");
+            if (breakEvenInflation == null) {
+                return ResponseEntity.ok(Map.of(
+                        "breakEvenInflation", "데이터 없음",
+                        "seriesId", "T10YIE",
+                        "meaning", "10-Year Breakeven Inflation Rate",
+                        "unit", "percentage",
+                        "note", "해당 날짜의 데이터가 없습니다"
+                ));
+            }
             return ResponseEntity.ok(Map.of(
                     "breakEvenInflation", breakEvenInflation,
                     "seriesId", "T10YIE",
