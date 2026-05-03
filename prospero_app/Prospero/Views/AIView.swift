@@ -586,7 +586,9 @@ struct AIIndicatorCard: View {
                     indicators: [
                         (localization.ai("Fear & Greed"), crypto.fearGreedIndex.map { String(format: "%.0f", Double($0)) } ?? "N/A", ""),
                         (localization.ai("Long/Short Ratio"), crypto.longShortRatio.map { String(format: "%.2f", $0) } ?? "N/A", selectedLanguage == "ENG" ? "x" : "배"),
-                        (localization.ai("Open Interest"), crypto.openInterest.map { String(format: "%.0f", $0) } ?? "N/A", "BTC")
+                        (localization.ai("Open Interest"), crypto.openInterest.map { String(format: "%.0f", $0) } ?? "N/A", "BTC"),
+                        (localization.cryptoMetric("fundingRate"), crypto.fundingRate.map { String(format: "%.4f%%", $0 * 100) } ?? "N/A", ""),
+                        (localization.cryptoMetric("activeAddresses"), crypto.activeAddresses.map { String(format: "%.0f", Double($0)) } ?? "N/A", "")
                     ],
                     theme: theme,
                     isCrypto: true
@@ -604,7 +606,11 @@ struct AIIndicatorCard: View {
                         (localization.ai("M2 Supply"), macro.m2.map { String(format: "%.0f", $0 / 1000) } ?? "N/A", selectedLanguage == "ENG" ? "billion USD" : "조 USD"),
                         (localization.ai("Dollar Index"), macro.dollarIndex.map { String(format: "%.2f", $0) } ?? "N/A", ""),
                         (localization.ai("Unemployment"), macro.unemployment.map { String(format: "%.2f", $0) } ?? "N/A", "%"),
-                        (localization.ai("CPI"), macro.cpi.map { String(format: "%.2f", $0 / 100) } ?? "N/A", "%")
+                        (localization.ai("CPI"), macro.cpi.map { String(format: "%.2f", $0 / 100) } ?? "N/A", "%"),
+                        (localization.macroMetric("vix"), macro.vix.map { String(format: "%.2f", $0) } ?? "N/A", ""),
+                        (localization.macroMetric("oilPrice"), macro.oilPrice.map { String(format: "$%.2f", $0) } ?? "N/A", ""),
+                        (localization.macroMetric("yieldSpread"), macro.yieldSpread.map { String(format: "%+.2f%%", $0) } ?? "N/A", ""),
+                        (localization.macroMetric("breakEvenInflation"), macro.breakEvenInflation.map { String(format: "%.2f%%", $0) } ?? "N/A", "")
                     ],
                     theme: theme,
                     isCrypto: false

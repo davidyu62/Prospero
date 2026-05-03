@@ -78,7 +78,7 @@ class Localization {
             case "Fear & Greed": return "공포탐욕지수"
             case "Long/Short Ratio": return "롱숏비율"
             case "Exchange Balance": return "거래소잔고"
-            case "Open Interest": return "개방 관심도"
+            case "Open Interest": return "미결제 약정"
             case "OI + Price": return "미결제 약정"
             case "MVRV": return "MVRV"
             case "BTC Trend": return "BTC 추세"
