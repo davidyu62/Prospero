@@ -779,7 +779,7 @@ struct MetricCard: View {
                     .overlay(
                         Image(systemName: iconForMetric(metric.title))
                             .font(.system(size: 20))
-                            .foregroundColor(theme.secondaryText)
+                            .foregroundColor(colorForMetricIcon(metric.title, metric.change, metric.changeIsPositive, metric.barProgress))
                     )
 
                 VStack(alignment: .leading, spacing: 4) {
@@ -881,14 +881,53 @@ struct MetricCard: View {
 
     private func iconForMetric(_ title: String) -> String {
         switch title {
-        case "New Addresses":
-            return "doc.on.doc.fill"
         case "Open Interest":
             return "chart.line.uptrend.xyaxis"
         case "Long/Short Ratio":
             return "arrow.left.arrow.right"
+        case "MVRV":
+            return "chart.bar.fill"
+        case "Funding Rate":
+            return "percent"
+        case "Active Addresses":
+            return "network"
         default:
             return "circle.fill"
+        }
+    }
+
+    private func colorForMetricIcon(_ title: String, _ change: String?, _ changeIsPositive: Bool?, _ barProgress: Double?) -> Color {
+        switch title {
+        case "Open Interest":
+            if let progress = barProgress {
+                return progress >= 0.5 ? .successColor : .warningColor
+            }
+            return .blue
+        case "Long/Short Ratio":
+            if let progress = barProgress {
+                return progress >= 0.5 ? .successColor : .dangerColor
+            }
+            return .blue
+        case "MVRV":
+            if let progress = barProgress {
+                return progress >= 0.5 ? .successColor : .warningColor
+            }
+            return .blue
+        case "Funding Rate":
+            // 펀딩비: 음수(숏 우위) = 좋음 = 초록색
+            if let change = change {
+                let isNegative = change.contains("▼") || change.contains("-")
+                return isNegative ? .successColor : .dangerColor
+            }
+            return .blue
+        case "Active Addresses":
+            // 활성주소: 상승 = 좋음
+            if let isPositive = changeIsPositive {
+                return isPositive ? .successColor : .warningColor
+            }
+            return .blue
+        default:
+            return .blue
         }
     }
 
