@@ -161,10 +161,17 @@
   결과: 크립토: 60, 매크로: 40, 합: 100 ✓
   ```
 
-- [x] **V-2** prospero_ai 로컬 테스트
-  ```bash
-  cd prospero_ai && python run_local.py 20260503
-  # 신규 점수 필드 출력 확인 완료
+- [x] **V-2** prospero_ai 로컬 테스트 (20260503)
+  ```
+  ✅ 신규 6개 점수 필드 정상 계산:
+     - funding_rate_score: 2.57
+     - active_addresses_score: 1.0
+     - vix_score: 3.62
+     - oil_price_score: 1.01
+     - yield_spread_score: 2.5
+     - break_even_inflation_score: 1.55
+  ✅ 17개 지표 모두 설명 생성
+  ✅ 신뢰도 (17/16개 중 N개) 형식 정상 작동
   ```
 
 ### iOS 검증
@@ -178,10 +185,47 @@
   xcodebuild build iphonesimulator 성공 ✓ (exit code 0)
   ```
 
+- [x] **V-4-1** ViewBuilder 제약 조건 수정
+  ```
+  AIView.swift: for loop → computed property 'explanationsList' 리팩토링 완료
+  xcodebuild 빌드 성공 ✓ (exit code 0)
+  ```
+
 ### API 검증
-- [ ] **V-5** prospero_backend API 응답 확인
+- [x] **V-5** prospero_backend API 응답 확인
   ```bash
-  # fundingRate, activeAddresses 등 신규 필드 포함 확인
+  # fundingRate, activeAddresses, vix, oilPrice, yieldSpread, breakEvenInflation 신규 필드 포함 확인
+  # 테스트 결과: 모든 신규 필드 정상 서빙 ✓
+  # 크립토: fundingRate (-1.4e-05), activeAddresses (620486)
+  # 매크로: vix (16.89), oilPrice (99.89), yieldSpread (0.51), breakEvenInflation (2.48)
+  ```
+
+### 앱 런타임 검증
+- [x] **V-6** 코드 검증 (컴파일된 앱 구조 확인) ✓
+  ```
+  ✅ CryptoDashboardView: fundingRate, activeAddresses MetricCard 추가 확인
+  ✅ MacroDashboardView: vix, oilPrice, yieldSpread, breakEvenInflation MetricCard 추가 확인
+  ✅ AIView: explanationsList computed property로 17개 지표 모두 포함
+  ✅ IndicatorMetadata.json: 17개 지표 + 한/영 용어 매핑 완료
+     - openInterest: 미결제 약정 (일관된 용어)
+     - 신규 6개: fundingRate(펀딩비), activeAddresses(활성주소), 
+               vix(공포지수), oilPrice(원유가격), yieldSpread(금리차), 
+               breakEvenInflation(기대인플레이션)
+  ```
+
+- [ ] **V-7** iOS 시뮬레이터에서 앱 실행 (수동 테스트)
+  ```
+  필요 사항:
+  1. 대시보드 탭
+     - Crypto: fundingRate, activeAddresses 카드 표시
+     - Macro: vix, oilPrice, yieldSpread, breakEvenInflation 카드 표시
+  2. AI 탭
+     - 17개 지표 모두 한/영 용어 일치하는지 확인
+     - "미결제 약정" (openInterest) 일관성 확인
+     - 신규 6개 지표 설명 표시 확인
+  3. InfoSheet
+     - FundingRateInfoSheet, ActiveAddressesInfoSheet 동작 확인
+     - VixInfoSheet, OilPriceInfoSheet, YieldSpreadInfoSheet, BreakEvenInflationInfoSheet 동작 확인
   ```
 
 ---
@@ -194,14 +238,19 @@
 
 ---
 
-**진행률**: 17/17 완료 (100%) ✅
+**진행률**: 
+- 코드 구현: 17/17 완료 (100%) ✅
+- 컴파일 및 빌드: 완료 ✅
+- 용어 일관성 개선 (IndicatorMetadata.json): 완료 ✅
+- 런타임 검증: 진행 중 ⏳
 
-**완료 일시**: 2026-05-03 (v3.0 완전 통합)
+**최종 갱신**: 2026-05-03 21:43 (ViewBuilder 제약 조건 수정 완료)
 
 **다음 작업**: 
 - [x] 로컬 테스트 실행 (prospero_ai run_local.py) ✓
-- [x] iOS 빌드 및 UI 확인 ✓
-- [ ] API 응답 검증
+- [x] iOS 빌드 및 컴파일 (xcodebuild) ✓
+- [ ] **V-5**: API 응답 검증 (prospero_backend에서 신규 필드 확인)
+- [ ] **V-6**: iOS 시뮬레이터 앱 실행 (UI 용어 일관성 확인)
 - [ ] 배포 준비
   - [ ] prospero_collector 배포 (`./deploy.sh`)
   - [ ] prospero_backend 배포 (`./deploy.sh`)
@@ -209,24 +258,34 @@
 
 ---
 
-## 완료 요약
+## 완료 요약 (v3.0 + 용어 일관성 개선)
 
-### v3.0 신규 지표 6개 통합 완료
+### 신규 기능
 - **암호화폐 지표 2개**: 펀딩비 (Funding Rate), 활성주소 (Active Addresses)
 - **거시경제 지표 4개**: VIX, WTI 원유가격, 금리차 (T10Y2Y), 기대인플레이션 (10Y BE)
+- **용어 일관성**: IndicatorMetadata.json + IndicatorManager를 통한 중앙 관리
 
-### 전체 통합 내역
-| 컴포넌트 | 상태 | 비고 |
+### 전체 통합 현황
+| 컴포넌트 | 상태 | 주요 내용 |
 |---|---|---|
-| prospero_boot | ✅ 완료 | 6개 지표 API 엔드포인트 완성 |
-| prospero_collector | ✅ 완료 | 데이터 수집 및 DynamoDB 저장 완성 |
-| prospero_backend | ✅ 완료 | 6개 지표 포함 API 응답 완성 |
-| prospero_ai | ✅ 완료 | 점수 함수 + 데이터 파이프라인 완성 |
-| prospero_app (모델) | ✅ 완료 | Swift Codable 모델 업데이트 완성 |
-| prospero_app (UI) | ✅ 완료 | 10개 MetricCard + 6개 InfoSheet 완성 |
-| 문서 | ✅ 완료 | INVESTMENT_FORMULA.md v3.0 업데이트 완성 |
+| prospero_boot | ✅ 완료 | 6개 지표 API 엔드포인트 |
+| prospero_collector | ✅ 완료 | 데이터 수집 및 DynamoDB 저장 |
+| prospero_backend | ✅ 완료 | 6개 필드 포함 API 응답 서빙 ✓ |
+| prospero_ai | ✅ 완료 | 17개 지표 점수 계산 + 설명 생성 |
+| prospero_app (모델) | ✅ 완료 | CryptoAPIResponse, MacroAPIResponse, InvestmentScore 필드 추가 |
+| prospero_app (UI) | ✅ 완료 | 대시보드: 17개 MetricCard + 6개 InfoSheet |
+|                    | ✅ 완료 | AI 탭: 17개 지표 한/영 용어 일관성 |
+| prospero_app (아키텍처) | ✅ 완료 | IndicatorManager + IndicatorMetadata.json 구현 |
+| 문서 | ✅ 완료 | INVESTMENT_FORMULA.md v3.0 |
 
-### 점수 체계 확정
-- **크립토 점수**: 60점 (기존 5개 + 신규 2개)
-- **거시경제 점수**: 40점 (기존 6개 + 신규 4개)
+### 점수 체계 (최종 확정)
+- **크립토 점수**: 60점 (10+18+14+8+4+4+2)
+- **거시경제 점수**: 40점 (8+5+6+5+3+2+4+2+3+2)
 - **전체 합계**: 100점 (변경 없음)
+
+### 용어 일관성 개선 결과
+✅ 하드코딩 제거: 모든 지표 용어를 IndicatorMetadata.json에서 관리
+✅ 단일 소스 진실(SSOT): IndicatorManager를 통한 일관된 접근
+✅ 예시:
+  - openInterest: "미결제 약정" (이전 불일치: "개방관심도" vs "미결제 약정" 해결)
+  - 신규 6개: 모두 JSON 정의 기준으로 통일
