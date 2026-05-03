@@ -117,18 +117,16 @@ class Localization {
     
     // MARK: - Crypto Metrics
     func cryptoMetric(_ key: String) -> String {
+        // 지표 ID로 IndicatorManager에서 조회
+        if let indicator = IndicatorManager.shared.getIndicator(key) {
+            return language == "KOR" ? indicator.koreanName : indicator.englishName
+        }
+
         switch language {
         case "KOR":
             switch key {
-            case "Bitcoin (BTC)": return "비트코인 (BTC)"
             case "Price": return "가격"
-            case "Fear & Greed Index": return "공포탐욕 지수"
-            case "Market Sentiment": return "시장 심리"
-            case "New Addresses": return "신규 주소"
             case "Last 24h": return "최근 24시간"
-            case "Open Interest": return "미결제 약정"
-            case "Futures Market": return "선물 시장"
-            case "Long/Short Ratio": return "롱/숏 비율"
             case "Extreme Fear": return "극도의 공포"
             case "Fear": return "공포"
             case "Neutral": return "중립"
@@ -136,9 +134,6 @@ class Localization {
             case "Extreme Greed": return "극도의 탐욕"
             case "Extreme\nFear": return "극도의\n공포"
             case "Extreme\nGreed": return "극도의\n탐욕"
-            case "Funding Rate": return "펀딩비"
-            case "Network Activity": return "네트워크 활동"
-            case "Active Addresses": return "활성주소"
             default: return key
             }
         default:
@@ -148,29 +143,16 @@ class Localization {
     
     // MARK: - Macro Metrics
     func macroMetric(_ key: String) -> String {
+        // 지표 ID로 IndicatorManager에서 조회
+        if let indicator = IndicatorManager.shared.getIndicator(key) {
+            return language == "KOR" ? indicator.koreanName : indicator.englishName
+        }
+
         switch language {
         case "KOR":
             switch key {
-            case "Interest Rate": return "금리"
-            case "Federal Funds Rate": return "연방기금금리"
-            case "10Y Treasury": return "10년물 국채"
             case "Yield": return "수익률"
-            case "CPI": return "소비자물가지수"
-            case "Consumer Price Index": return "소비자물가지수"
-            case "M2 Money Supply": return "M2 통화량"
-            case "Billions USD": return "십억 달러"
-            case "Unemployment": return "실업률"
             case "Rate": return "비율"
-            case "Dollar Index": return "달러 인덱스"
-            case "DXY": return "DXY"
-            case "VIX": return "공포지수"
-            case "Volatility Index": return "공포지수"
-            case "Oil Price": return "원유가격"
-            case "WTI Crude": return "WTI 원유"
-            case "Yield Spread": return "금리차"
-            case "T10Y2Y": return "T10Y2Y"
-            case "Break-Even Inflation": return "기대인플레이션"
-            case "10Y BE": return "10년물 기대인플레이션"
             default: return key
             }
         default:

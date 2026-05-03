@@ -417,34 +417,53 @@ struct AIDetailedExplanationCard: View {
                 Spacer()
             }
 
-            // 언어 설정에 따라 한국어 또는 영어 설명 선택
-            let explanations: [(String, String)] = selectedLanguage == "ENG" ? [
-                (localization.ai("BTC Trend"), analysis.indicatorExplanationsEn.btcTrend),
-                (localization.ai("Fear & Greed"), analysis.indicatorExplanationsEn.fearGreed),
-                (localization.ai("Long/Short Ratio"), analysis.indicatorExplanationsEn.longShort),
-                (localization.ai("Open Interest"), analysis.indicatorExplanationsEn.openInterest),
-                (localization.ai("MVRV"), analysis.indicatorExplanationsEn.mvrv),
-                (localization.ai("Interest Rate"), analysis.indicatorExplanationsEn.interestRate),
-                (localization.ai("Treasury 10Y"), analysis.indicatorExplanationsEn.treasury10y),
-                (localization.ai("M2 Supply"), analysis.indicatorExplanationsEn.m2),
-                (localization.ai("Dollar Index"), analysis.indicatorExplanationsEn.dollarIndex),
-                (localization.ai("Unemployment"), analysis.indicatorExplanationsEn.unemployment),
-                (localization.ai("CPI"), analysis.indicatorExplanationsEn.cpi),
-                (localization.ai("Interaction"), analysis.indicatorExplanationsEn.interaction)
+            // IndicatorManager와 API 데이터를 통합하여 지표별 설명 생성
+            let indicatorManager = IndicatorManager.shared
+            let language = selectedLanguage
+
+            // API에서 제공하는 설명
+            let apiExplanations: [String: String] = selectedLanguage == "ENG" ? [
+                "btcPrice": analysis.indicatorExplanationsEn.btcTrend,
+                "fearGreedIndex": analysis.indicatorExplanationsEn.fearGreed,
+                "longShortRatio": analysis.indicatorExplanationsEn.longShort,
+                "openInterest": analysis.indicatorExplanationsEn.openInterest,
+                "mvrv": analysis.indicatorExplanationsEn.mvrv,
+                "interestRate": analysis.indicatorExplanationsEn.interestRate,
+                "treasury10y": analysis.indicatorExplanationsEn.treasury10y,
+                "m2": analysis.indicatorExplanationsEn.m2,
+                "dollarIndex": analysis.indicatorExplanationsEn.dollarIndex,
+                "unemployment": analysis.indicatorExplanationsEn.unemployment,
+                "cpi": analysis.indicatorExplanationsEn.cpi
             ] : [
-                (localization.ai("BTC Trend"), analysis.indicatorExplanations.btcTrend),
-                (localization.ai("Fear & Greed"), analysis.indicatorExplanations.fearGreed),
-                (localization.ai("Long/Short Ratio"), analysis.indicatorExplanations.longShort),
-                (localization.ai("OI + Price"), analysis.indicatorExplanations.openInterest),
-                (localization.ai("MVRV"), analysis.indicatorExplanations.mvrv),
-                (localization.ai("Interest Rate"), analysis.indicatorExplanations.interestRate),
-                (localization.ai("Treasury 10Y"), analysis.indicatorExplanations.treasury10y),
-                (localization.ai("M2 Supply"), analysis.indicatorExplanations.m2),
-                (localization.ai("Dollar Index"), analysis.indicatorExplanations.dollarIndex),
-                (localization.ai("Unemployment"), analysis.indicatorExplanations.unemployment),
-                (localization.ai("CPI"), analysis.indicatorExplanations.cpi),
-                (localization.ai("Interaction"), analysis.indicatorExplanations.interaction)
+                "btcPrice": analysis.indicatorExplanations.btcTrend,
+                "fearGreedIndex": analysis.indicatorExplanations.fearGreed,
+                "longShortRatio": analysis.indicatorExplanations.longShort,
+                "openInterest": analysis.indicatorExplanations.openInterest,
+                "mvrv": analysis.indicatorExplanations.mvrv,
+                "interestRate": analysis.indicatorExplanations.interestRate,
+                "treasury10y": analysis.indicatorExplanations.treasury10y,
+                "m2": analysis.indicatorExplanations.m2,
+                "dollarIndex": analysis.indicatorExplanations.dollarIndex,
+                "unemployment": analysis.indicatorExplanations.unemployment,
+                "cpi": analysis.indicatorExplanations.cpi
             ]
+
+            // 지표 목록 구성 (기존 + 신규 6개)
+            let indicatorIds = ["btcPrice", "fearGreedIndex", "longShortRatio", "openInterest", "mvrv", "fundingRate", "activeAddresses", "interestRate", "treasury10y", "m2", "dollarIndex", "unemployment", "cpi", "vix", "oilPrice", "yieldSpread", "breakEvenInflation"]
+
+            var explanations: [(String, String)] = []
+            for id in indicatorIds {
+                let name = indicatorManager.getName(id, language: language)
+                let explanation = apiExplanations[id] ?? indicatorManager.getExplanation(id, language: language)
+                if !explanation.isEmpty {
+                    explanations.append((name, explanation))
+                }
+            }
+
+            // Interaction 설명 추가
+            let interactionName = language == "ENG" ? "Interaction" : "종합 환경"
+            let interactionExplanation = language == "ENG" ? analysis.indicatorExplanationsEn.interaction : analysis.indicatorExplanations.interaction
+            explanations.append((interactionName, interactionExplanation))
 
             VStack(spacing: 10) {
                 ForEach(explanations.indices, id: \.self) { index in
