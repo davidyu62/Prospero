@@ -123,14 +123,18 @@
   - [x] 데이터 파싱 로직 추가
   - [x] MetricCard 2개 추가
   - [x] 아이콘 매핑 추가
-  - [x] InfoSheet 2개 추가
+  - [x] FundingRateInfoSheet 추가 ✓
+  - [x] ActiveAddressesInfoSheet 추가 ✓
 
 - [x] **4-4** `MacroDashboardView.swift` 수정
   - [x] 상태 변수 4개 추가
   - [x] 데이터 파싱 로직 추가
   - [x] MacroMetricCard 4개 추가
   - [x] 아이콘 매핑 추가
-  - [x] InfoSheet 4개 추가
+  - [x] VixInfoSheet 추가 ✓
+  - [x] OilPriceInfoSheet 추가 ✓
+  - [x] YieldSpreadInfoSheet 추가 ✓
+  - [x] BreakEvenInflationInfoSheet 추가 ✓
 
 - [x] **4-5** `ColorUtility.swift` 확인 및 수정
   - [x] `colorForVix()` 함수 추가
@@ -169,7 +173,10 @@
   xcodebuild dry-run 성공 ✓
   ```
 
-- [ ] **V-4** 실제 빌드 (선택사항)
+- [x] **V-4** 실제 빌드
+  ```
+  xcodebuild build iphonesimulator 성공 ✓ (exit code 0)
+  ```
 
 ### API 검증
 - [ ] **V-5** prospero_backend API 응답 확인
@@ -192,7 +199,34 @@
 **완료 일시**: 2026-05-03 (v3.0 완전 통합)
 
 **다음 작업**: 
-- [ ] 로컬 테스트 실행 (prospero_ai run_local.py)
-- [ ] iOS 빌드 및 UI 확인
+- [x] 로컬 테스트 실행 (prospero_ai run_local.py) ✓
+- [x] iOS 빌드 및 UI 확인 ✓
 - [ ] API 응답 검증
-- [ ] 배포 (prospero_collector, prospero_backend, prospero_app 차례로)
+- [ ] 배포 준비
+  - [ ] prospero_collector 배포 (`./deploy.sh`)
+  - [ ] prospero_backend 배포 (`./deploy.sh`)
+  - [ ] prospero_app 배포 (App Store 또는 TestFlight)
+
+---
+
+## 완료 요약
+
+### v3.0 신규 지표 6개 통합 완료
+- **암호화폐 지표 2개**: 펀딩비 (Funding Rate), 활성주소 (Active Addresses)
+- **거시경제 지표 4개**: VIX, WTI 원유가격, 금리차 (T10Y2Y), 기대인플레이션 (10Y BE)
+
+### 전체 통합 내역
+| 컴포넌트 | 상태 | 비고 |
+|---|---|---|
+| prospero_boot | ✅ 완료 | 6개 지표 API 엔드포인트 완성 |
+| prospero_collector | ✅ 완료 | 데이터 수집 및 DynamoDB 저장 완성 |
+| prospero_backend | ✅ 완료 | 6개 지표 포함 API 응답 완성 |
+| prospero_ai | ✅ 완료 | 점수 함수 + 데이터 파이프라인 완성 |
+| prospero_app (모델) | ✅ 완료 | Swift Codable 모델 업데이트 완성 |
+| prospero_app (UI) | ✅ 완료 | 10개 MetricCard + 6개 InfoSheet 완성 |
+| 문서 | ✅ 완료 | INVESTMENT_FORMULA.md v3.0 업데이트 완성 |
+
+### 점수 체계 확정
+- **크립토 점수**: 60점 (기존 5개 + 신규 2개)
+- **거시경제 점수**: 40점 (기존 6개 + 신규 4개)
+- **전체 합계**: 100점 (변경 없음)
