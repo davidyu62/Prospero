@@ -78,7 +78,7 @@ class Localization {
             case "Fear & Greed": return "공포탐욕지수"
             case "Long/Short Ratio": return "롱숏비율"
             case "Exchange Balance": return "거래소잔고"
-            case "Open Interest": return "개방 관심도"
+            case "Open Interest": return "미결제 약정"
             case "OI + Price": return "미결제 약정"
             case "MVRV": return "MVRV"
             case "BTC Trend": return "BTC 추세"
@@ -117,18 +117,29 @@ class Localization {
     
     // MARK: - Crypto Metrics
     func cryptoMetric(_ key: String) -> String {
+        // 1. 지표 ID로 IndicatorManager에서 조회
+        if let indicator = IndicatorManager.shared.getIndicator(key) {
+            return language == "KOR" ? indicator.koreanName : indicator.englishName
+        }
+
+        // 2. 영어 제목 → 지표 ID 매핑 (MetricCard에서 영어 제목을 전달할 때)
+        let titleToIdMap: [String: String] = [
+            "Open Interest": "openInterest",
+            "Long/Short Ratio": "longShortRatio",
+            "MVRV": "mvrv",
+            "Funding Rate": "fundingRate",
+            "Active Addresses": "activeAddresses"
+        ]
+
+        if let indicatorId = titleToIdMap[key], let indicator = IndicatorManager.shared.getIndicator(indicatorId) {
+            return language == "KOR" ? indicator.koreanName : indicator.englishName
+        }
+
         switch language {
         case "KOR":
             switch key {
-            case "Bitcoin (BTC)": return "비트코인 (BTC)"
             case "Price": return "가격"
-            case "Fear & Greed Index": return "공포탐욕 지수"
-            case "Market Sentiment": return "시장 심리"
-            case "New Addresses": return "신규 주소"
             case "Last 24h": return "최근 24시간"
-            case "Open Interest": return "미결제 약정"
-            case "Futures Market": return "선물 시장"
-            case "Long/Short Ratio": return "롱/숏 비율"
             case "Extreme Fear": return "극도의 공포"
             case "Fear": return "공포"
             case "Neutral": return "중립"
@@ -145,21 +156,34 @@ class Localization {
     
     // MARK: - Macro Metrics
     func macroMetric(_ key: String) -> String {
+        // 1. 지표 ID로 IndicatorManager에서 조회
+        if let indicator = IndicatorManager.shared.getIndicator(key) {
+            return language == "KOR" ? indicator.koreanName : indicator.englishName
+        }
+
+        // 2. 영어 제목 → 지표 ID 매핑 (MetricCard에서 영어 제목을 전달할 때)
+        let titleToIdMap: [String: String] = [
+            "Interest Rate": "interestRate",
+            "10Y Treasury": "treasury10y",
+            "M2 Money Supply": "m2",
+            "Dollar Index": "dollarIndex",
+            "Unemployment": "unemployment",
+            "CPI": "cpi",
+            "VIX": "vix",
+            "Oil Price": "oilPrice",
+            "Yield Spread": "yieldSpread",
+            "Break-Even Inflation": "breakEvenInflation"
+        ]
+
+        if let indicatorId = titleToIdMap[key], let indicator = IndicatorManager.shared.getIndicator(indicatorId) {
+            return language == "KOR" ? indicator.koreanName : indicator.englishName
+        }
+
         switch language {
         case "KOR":
             switch key {
-            case "Interest Rate": return "금리"
-            case "Federal Funds Rate": return "연방기금금리"
-            case "10Y Treasury": return "10년물 국채"
             case "Yield": return "수익률"
-            case "CPI": return "소비자물가지수"
-            case "Consumer Price Index": return "소비자물가지수"
-            case "M2 Money Supply": return "M2 통화량"
-            case "Billions USD": return "십억 달러"
-            case "Unemployment": return "실업률"
             case "Rate": return "비율"
-            case "Dollar Index": return "달러 인덱스"
-            case "DXY": return "DXY"
             default: return key
             }
         default:
@@ -250,7 +274,6 @@ class Localization {
             // Long/Short Ratio
             case "What is Long/Short Ratio?": return "롱/숏 비율이란 무엇인가요?"
             case "Long/Short Ratio measures the proportion of traders holding long positions (betting on price increase) versus short positions (betting on price decrease) in the futures market.": return "롱/숏 비율은 선물 시장에서 롱 포지션(가격 상승에 베팅)을 보유한 트레이더와 숏 포지션(가격 하락에 베팅)을 보유한 트레이더의 비율을 측정합니다."
-            case "Market Sentiment": return "시장 심리"
             case "Shows trader expectations": return "트레이더의 기대를 보여줍니다"
             case "Ratio > 1.0": return "비율 > 1.0"
             case "More longs than shorts (bullish)": return "숏보다 롱이 많음 (강세)"
@@ -313,6 +336,50 @@ class Localization {
             case "Typically around 4-5% in healthy economies": return "건강한 경제에서는 일반적으로 약 4-5%"
             case "The unemployment rate is calculated by dividing the number of unemployed people by the total labor force (employed + unemployed). A low unemployment rate indicates a strong job market and healthy economy, but extremely low rates can lead to wage inflation. High unemployment suggests economic weakness and can lead to reduced consumer spending. The Federal Reserve considers unemployment when setting monetary policy, as it relates to both inflation and economic growth.": return "실업률은 실업자 수를 총 노동력(취업자 + 실업자)으로 나누어 계산합니다. 낮은 실업률은 강한 일자리 시장과 건강한 경제를 나타내지만, 극도로 낮은 비율은 임금 인플레이션으로 이어질 수 있습니다. 높은 실업률은 경제 약화를 시사하며 소비자 지출 감소로 이어질 수 있습니다. 연준은 인플레이션과 경제 성장 모두와 관련이 있기 때문에 통화 정책을 설정할 때 실업률을 고려합니다."
             
+            // VIX
+            case "What is the VIX?": return "VIX란 무엇인가요?"
+            case "The VIX (Volatility Index), also known as the 'Fear Index,' measures the market's expectation of 30-day volatility based on S&P 500 index option prices. It's a key gauge of investor fear and market uncertainty.": return "VIX(공포지수)는 S&P 500 지수 옵션 가격을 기반으로 한 30일 변동성에 대한 시장의 기대를 측정합니다. 투자자의 두려움과 시장 불확실성의 핵심 지표입니다."
+            case "Low VIX (≤15)": return "낮은 VIX (≤15)"
+            case "Low fear, stable markets, bullish sentiment": return "낮은 공포, 안정적 시장, 강세 심리"
+            case "High VIX (>30)": return "높은 VIX (>30)"
+            case "High fear, volatile markets, risk-off sentiment": return "높은 공포, 변동성 높은 시장, 위험 회피 심리"
+            case "Market Indicator": return "시장 지표"
+            case "Inverse correlation with stock market performance": return "주식 시장 성과와의 역 상관관계"
+            case "The VIX is derived from the implied volatility of S&P 500 index options, representing what traders expect about future market swings. When investors are confident, the VIX stays low; when uncertainty increases, the VIX rises sharply. A VIX below 15 typically indicates complacency and strong risk appetite. A spike above 30 signals panic and flight to safety. Crypto markets often move in inverse correlation with the VIX - when traditional markets stabilize (VIX falls), capital may flow back to risk assets like crypto.": return "VIX는 S&P 500 지수 옵션의 내재 변동성에서 도출되며, 미래 시장 변동에 대한 트레이더들의 예상을 나타냅니다. 투자자들이 자신감 있을 때 VIX는 낮게 유지되고, 불확실성이 증가할 때 VIX는 급격히 상승합니다. 15 이하의 VIX는 일반적으로 안주와 강한 위험 선호를 나타냅니다. 30 이상의 급등은 공황과 안전 자산 선호를 신호합니다. 암호화폐 시장은 종종 VIX와 역 상관관계로 움직입니다 - 전통 시장이 안정화될 때(VIX 하락), 자본이 암호화폐 같은 위험 자산으로 다시 흘러들 수 있습니다."
+
+            // Oil Price
+            case "What is Oil Price?": return "원유가격이란 무엇인가요?"
+            case "The Oil Price (WTI Crude) is the cost per barrel of West Texas Intermediate crude oil, a primary benchmark for global oil prices. It reflects supply-demand dynamics and geopolitical factors that impact the global economy.": return "원유가격(WTI 유종)은 글로벌 유가의 주요 벤치마크인 웨스트텍사스 중질유의 배럴당 가격입니다. 글로벌 경제에 영향을 미치는 공급-수요 역학과 지정학적 요인을 반영합니다."
+            case "Optimal Range ($60-80)": return "최적 범위 ($60-80)"
+            case "Stable prices support economic growth": return "안정적 가격은 경제 성장을 지원합니다"
+            case "High Oil Prices (>$90)": return "높은 유가 (>$90)"
+            case "Inflation pressure, reduces consumer spending": return "인플레이션 압력, 소비자 지출 감소"
+            case "Low Oil Prices (<$50)": return "낮은 유가 (<$50)"
+            case "Economic weakness signal, deflationary pressure": return "경제 약세 신호, 디플레이션 압력"
+            case "Oil prices impact inflation, transportation costs, and manufacturing expenses across the economy. High oil prices can trigger stagflation (high inflation with weak growth), while low prices may indicate recession fears. The price is driven by OPEC production decisions, geopolitical events, supply disruptions, and global economic growth expectations. For crypto investors, elevated oil prices often correlate with inflation concerns that drive investment in alternative assets like Bitcoin.": return "유가는 경제 전반에 걸쳐 인플레이션, 운송비, 제조 비용에 영향을 미칩니다. 높은 유가는 스태그플레이션(높은 인플레이션과 약한 성장)을 촉발할 수 있으며, 낮은 가격은 경기 침체 우려를 나타낼 수 있습니다. 가격은 OPEC 생산 결정, 지정학적 사건, 공급 차질 및 글로벌 경제 성장 기대에 의해 결정됩니다. 암호화폐 투자자들에게는 높은 유가가 비트코인 같은 대체 자산에 대한 투자를 촉진하는 인플레이션 우려와 상관관계가 있습니다."
+
+            // Yield Spread
+            case "What is Yield Spread?": return "금리차란 무엇인가요?"
+            case "The Yield Spread (T10Y2Y) is the difference between 10-year and 2-year U.S. Treasury yields. It's a critical indicator of economic expectations and is often used as a recession predictor when the curve inverts (negative spread).": return "금리차(T10Y2Y)는 10년물과 2년물 미국 국채 수익률의 차이입니다. 경제 기대의 중요한 지표이며, 수익률 곡선이 역전(음수 스프레드)될 때 경기 침체 예측기로 자주 사용됩니다."
+            case "Positive Spread (>0.5%)": return "양의 스프레드 (>0.5%)"
+            case "Normal curve, economic growth expected": return "정상 곡선, 경제 성장 예상"
+            case "Negative Spread (<0%)": return "음의 스프레드 (<0%)"
+            case "Inverted curve, recession warning signal": return "역전된 곡선, 경기 침체 경고 신호"
+            case "Recession Predictor": return "경기 침체 예측기"
+            case "Inversion has preceded most U.S. recessions": return "역전은 대부분의 미국 경기 침체 앞서 발생했습니다"
+            case "Normally, longer-term bonds have higher yields than shorter-term bonds (positive spread). When short-term rates rise above long-term rates due to expected future economic weakness, the curve inverts. This inversion has been a reliable predictor of recession: every inversion in the past 50 years has preceded a downturn. For crypto markets, yield curve inversion often triggers risk-off sentiment, but it can also precede monetary policy shifts (rate cuts) that eventually support alternative assets.": return "일반적으로 장기 채권의 수익률이 단기 채권보다 높습니다(양의 스프레드). 예상되는 미래 경제 약세로 인해 단기 금리가 장기 금리를 초과할 때, 곡선이 역전됩니다. 이 역전은 경기 침체의 신뢰할 수 있는 예측기입니다: 지난 50년간 모든 역전이 경기 침체를 앞서 발생했습니다. 암호화폐 시장의 경우, 수익률 곡선 역전은 종종 위험 회피 심리를 촉발하지만, 결국 대체 자산을 지원하는 통화 정책 변화(금리 인하)를 선행할 수도 있습니다."
+
+            // Break-Even Inflation
+            case "What is Break-Even Inflation?": return "기대인플레이션이란 무엇인가요?"
+            case "Break-Even Inflation (10Y BE) is the market's expectation of average inflation over the next 10 years, derived from the difference between nominal Treasury yields and TIPS (Treasury Inflation-Protected Securities) yields. It reflects investor inflation expectations.": return "기대인플레이션(10Y BE)은 명목 국채 수익률과 TIPS(국채 인플레이션 연동채) 수익률의 차이에서 도출된 향후 10년 평균 인플레이션에 대한 시장의 기대입니다. 투자자의 인플레이션 기대를 반영합니다."
+            case "Optimal Range (1.8-2.3%)": return "최적 범위 (1.8-2.3%)"
+            case "Fed target achieved, stable growth": return "연준 목표 달성, 안정적 성장"
+            case "Above 2.5%": return "2.5% 이상"
+            case "Inflation concerns, may trigger policy tightening": return "인플레이션 우려, 정책 긴축 유발 가능"
+            case "Below 1.5%": return "1.5% 미만"
+            case "Deflation fears, economic weakness signal": return "디플레이션 우려, 경제 약세 신호"
+            case "Market participants buy TIPS to protect against inflation, creating a spread with nominal Treasuries. This spread reflects inflation expectations. When expectations rise above the Fed's 2% target, the central bank may maintain hawkish policies to contain inflation, which pressures risk assets. Conversely, when expectations fall below target, it may signal demand weakness or impending rate cuts. For crypto investors, elevated inflation expectations can support Bitcoin as an inflation hedge, while deflation fears typically trigger broad risk-off sentiment.": return "시장 참여자들은 인플레이션으로부터 보호하기 위해 TIPS를 구매하여 명목 국채와의 스프레드를 만듭니다. 이 스프레드는 인플레이션 기대를 반영합니다. 기대가 연준의 2% 목표를 초과하면, 중앙은행은 인플레이션을 억제하기 위해 매파적 정책을 유지할 수 있으며, 이는 위험 자산에 압박을 줍니다. 반대로 기대가 목표 이하로 떨어지면, 수요 약화나 임박한 금리 인하를 신호할 수 있습니다. 암호화폐 투자자들에게는 높은 인플레이션 기대가 인플레이션 헤지 수단으로서 비트코인을 지원할 수 있으며, 디플레이션 우려는 일반적으로 광범위한 위험 회피 심리를 촉발합니다."
+
             // Dollar Index
             case "What is the Dollar Index?": return "달러 인덱스란 무엇인가요?"
             case "The U.S. Dollar Index (DXY) measures the value of the U.S. dollar against a basket of foreign currencies, including the Euro, Japanese Yen, British Pound, Canadian Dollar, Swedish Krona, and Swiss Franc. It's a key indicator of dollar strength.": return "미국 달러 인덱스(DXY)는 유로, 일본 엔, 영국 파운드, 캐나다 달러, 스웨덴 크로나, 스위스 프랑을 포함한 외국 통화 바구니에 대한 미국 달러의 가치를 측정합니다. 달러 강도의 핵심 지표입니다."
@@ -323,6 +390,28 @@ class Localization {
             case "Global Impact": return "글로벌 영향"
             case "Affects international trade and commodity prices": return "국제 무역과 원자재 가격에 영향을 미칩니다"
             case "The Dollar Index is calculated as a weighted geometric mean of the dollar's value against the basket of currencies. A value above 100 means the dollar is stronger than the baseline (set in 1973), while below 100 means it's weaker. A strong dollar makes U.S. exports more expensive but imports cheaper, while a weak dollar has the opposite effect. The index is closely watched by traders, investors, and policymakers as it impacts global trade, commodity prices (which are often priced in dollars), and emerging market economies.": return "달러 인덱스는 통화 바구니에 대한 달러 가치의 가중 기하 평균으로 계산됩니다. 100보다 높은 값은 달러가 기준선(1973년 설정)보다 강하다는 의미이며, 100보다 낮은 값은 약하다는 의미입니다. 강한 달러는 미국 수출을 더 비싸게 만들지만 수입을 더 저렴하게 만드는 반면, 약한 달러는 반대 효과를 가집니다. 이 지수는 글로벌 무역, 원자재 가격(종종 달러로 표시됨), 신흥 시장 경제에 영향을 미치기 때문에 트레이더, 투자자 및 정책 입안자들이 면밀히 관찰합니다."
+
+            // Funding Rate
+            case "What is Funding Rate?": return "펀딩비란 무엇인가요?"
+            case "Funding Rate is the periodic interest that traders with leveraged positions pay to each other in the futures market. It keeps perpetual futures prices aligned with spot prices and reflects the market's sentiment about future price direction.": return "펀딩비는 선물 시장에서 레버리지 포지션을 보유한 트레이더들이 서로에게 지불하는 주기적 이자입니다. 무기한 선물 가격을 현물 가격과 일치시키고 미래 가격 방향에 대한 시장의 심리를 반영합니다."
+            case "Positive Rate": return "양의 펀딩비"
+            case "Longs pay shorts (market bullish), contrarian signal": return "롱이 숏에 지불 (시장 강세), 역추세 신호"
+            case "Negative Rate": return "음의 펀딩비"
+            case "Shorts pay longs (market bearish), potential bounce": return "숏이 롱에 지불 (시장 약세), 반등 가능성"
+            case "Extreme Rates": return "극단적 펀딩비"
+            case "Very high rates indicate overlevered positions": return "매우 높은 비율은 과도한 레버리지 포지션을 나타냅니다"
+            case "Traders pay funding rates every 8 hours on Binance. When rates are positive and high, long traders pay a lot to maintain positions, creating a contrarian signal that shorts are being squeezed out. When rates are negative, short traders pay longs, suggesting oversold conditions. Monitoring funding rates helps traders identify potential reversals and extreme market conditions.": return "트레이더들은 바이낸스에서 8시간마다 펀딩비를 지불합니다. 비율이 양수이고 높을 때, 롱 트레이더들은 포지션을 유지하기 위해 많은 비용을 지불하여 숏이 청산되고 있다는 역추세 신호를 만듭니다. 비율이 음수일 때, 숏 트레이더들이 롱에 지불하므로 과매도 상태를 시사합니다. 펀딩비를 모니터링하면 트레이더들이 잠재적 반전과 극단적 시장 상황을 식별하는 데 도움이 됩니다."
+
+            // Active Addresses
+            case "What are Active Addresses?": return "활성주소란 무엇인가요?"
+            case "Active Addresses measures the number of unique Bitcoin addresses that had some activity (sending or receiving BTC) in the last 24 hours. It's a key indicator of Bitcoin network adoption and usage intensity.": return "활성주소는 지난 24시간 동안 어떤 활동(BTC 송수신)을 한 고유한 비트코인 주소의 수를 측정합니다. 비트코인 네트워크 채택과 사용 강도의 핵심 지표입니다."
+            case "Rising Addresses": return "증가하는 주소"
+            case "Increasing network adoption and activity": return "증가하는 네트워크 채택 및 활동"
+            case "Falling Addresses": return "감소하는 주소"
+            case "Decreasing network usage, potential weakness": return "감소하는 네트워크 사용, 약세 신호"
+            case "Network Health": return "네트워크 건강"
+            case "Reflects actual Bitcoin transaction volume": return "실제 비트코인 거래량을 반영합니다"
+            case "Each address represents a unique wallet or participant on the network. Rising active addresses suggest growing network adoption and user engagement. When compared to the 30-day average, surges in active addresses can indicate capitulation (panic selling) or renewed interest. This metric is useful for confirming market movements - price increases with rising addresses suggest genuine growth, while price increases with falling addresses may be driven by speculation rather than real adoption.": return "각 주소는 네트워크의 고유한 지갑 또는 참여자를 나타냅니다. 증가하는 활성주소는 증가하는 네트워크 채택과 사용자 참여를 시사합니다. 30일 평균과 비교할 때, 활성주소의 급증은 시장 포기(공황 매도) 또는 새로운 관심을 나타낼 수 있습니다. 이 지표는 시장 움직임을 확인하는 데 유용합니다 - 증가하는 주소와 함께 가격 상승은 진정한 성장을 시사하는 반면, 감소하는 주소와 함께 가격 상승은 실제 채택보다는 투기로 인한 것일 수 있습니다."
 
             // MVRV
             case "What is MVRV?": return "MVRV란 무엇인가요?"

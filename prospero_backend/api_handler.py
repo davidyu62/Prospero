@@ -166,6 +166,8 @@ def _crypto_to_item(date: str, data: dict | None) -> dict | None:
         "fearGreedIndex": data.get("fearGreedIndex"),
         "openInterest": data.get("openInterest"),
         "mvrv": data.get("mvrv"),
+        "fundingRate": data.get("fundingRate"),
+        "activeAddresses": data.get("activeAddresses"),
     }
 
 
@@ -206,6 +208,10 @@ def _macro_to_item(date: str, data: dict | None) -> dict | None:
         "m2": data.get("m2"),
         "unemployment": data.get("unemployment"),
         "dollarIndex": data.get("dollarIndex"),
+        "vix": data.get("vix"),
+        "oilPrice": data.get("oilPrice"),
+        "yieldSpread": data.get("yieldSpread"),
+        "breakEvenInflation": data.get("breakEvenInflation"),
     }
 
 

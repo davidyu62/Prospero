@@ -1,0 +1,174 @@
+{
+  "indicators": [
+    {
+      "id": "btcPrice",
+      "category": "crypto",
+      "englishName": "Bitcoin (BTC)",
+      "koreanName": "비트코인 (BTC)",
+      "englishSubtitle": "Price",
+      "koreanSubtitle": "가격",
+      "englishExplanation": "Current market price of Bitcoin reflecting market sentiment and investor demand.",
+      "koreanExplanation": "비트코인의 현재 시장 가격으로 시장 심리와 투자자 수요를 반영합니다."
+    },
+    {
+      "id": "fearGreedIndex",
+      "category": "crypto",
+      "englishName": "Fear & Greed Index",
+      "koreanName": "공포탐욕 지수",
+      "englishSubtitle": "Market Sentiment",
+      "koreanSubtitle": "시장 심리",
+      "englishExplanation": "Measures investor sentiment from extreme fear (0) to extreme greed (100).",
+      "koreanExplanation": "극도의 공포(0)에서 극도의 탐욕(100)까지 투자자 심리를 측정합니다."
+    },
+    {
+      "id": "openInterest",
+      "category": "crypto",
+      "englishName": "Open Interest",
+      "koreanName": "미결제 약정",
+      "englishSubtitle": "Futures Market",
+      "koreanSubtitle": "선물 시장",
+      "englishExplanation": "Total value of active futures contracts, indicating market liquidity and leverage.",
+      "koreanExplanation": "활성 선물 계약의 총 가치로 시장 유동성과 레버리지를 나타냅니다."
+    },
+    {
+      "id": "longShortRatio",
+      "category": "crypto",
+      "englishName": "Long/Short Ratio",
+      "koreanName": "롱/숏 비율",
+      "englishSubtitle": "Market Sentiment",
+      "koreanSubtitle": "시장 심리",
+      "englishExplanation": "Ratio of long vs short positions; above 1.0 indicates bullish sentiment.",
+      "koreanExplanation": "롱 포지션 대 숏 포지션의 비율로 1.0 이상은 강세 심리를 나타냅니다."
+    },
+    {
+      "id": "mvrv",
+      "category": "crypto",
+      "englishName": "MVRV",
+      "koreanName": "MVRV",
+      "englishSubtitle": "Market Value/Realized Value",
+      "koreanSubtitle": "시장가치/실현가치",
+      "englishExplanation": "Compares market cap to realized value; high values can indicate overheated markets.",
+      "koreanExplanation": "시장 가치를 실현 가치와 비교하며 높은 값은 과열된 시장을 나타낼 수 있습니다."
+    },
+    {
+      "id": "fundingRate",
+      "category": "crypto",
+      "englishName": "Funding Rate",
+      "koreanName": "펀딩비",
+      "englishSubtitle": "Futures Market",
+      "koreanSubtitle": "선물 시장",
+      "englishExplanation": "Interest paid between long and short traders; negative rates indicate contrarian opportunity.",
+      "koreanExplanation": "롱과 숏 트레이더 간 지불되는 이자로 음의 비율은 역추세 기회를 나타냅니다."
+    },
+    {
+      "id": "activeAddresses",
+      "category": "crypto",
+      "englishName": "Active Addresses",
+      "koreanName": "활성주소",
+      "englishSubtitle": "Network Activity",
+      "koreanSubtitle": "네트워크 활동",
+      "englishExplanation": "Number of unique Bitcoin addresses with activity; reflects network adoption and usage.",
+      "koreanExplanation": "활동이 있는 고유한 비트코인 주소의 수로 네트워크 채택과 사용을 반영합니다."
+    },
+    {
+      "id": "interestRate",
+      "category": "macro",
+      "englishName": "Interest Rate",
+      "koreanName": "금리",
+      "englishSubtitle": "Federal Funds Rate",
+      "koreanSubtitle": "연방기금금리",
+      "englishExplanation": "Fed's target rate; higher rates tighten credit and slow growth, supporting risk-off sentiment.",
+      "koreanExplanation": "연준의 목표 금리로 높은 금리는 신용을 긴축하고 성장을 둔화시킵니다."
+    },
+    {
+      "id": "treasury10y",
+      "category": "macro",
+      "englishName": "10Y Treasury",
+      "koreanName": "10년물 국채",
+      "englishSubtitle": "Yield",
+      "koreanSubtitle": "수익률",
+      "englishExplanation": "10-year government bond yield; indicates long-term growth and inflation expectations.",
+      "koreanExplanation": "10년물 정부 채권 수익률로 장기 성장과 인플레이션 기대를 나타냅니다."
+    },
+    {
+      "id": "cpi",
+      "category": "macro",
+      "englishName": "CPI",
+      "koreanName": "소비자물가지수",
+      "englishSubtitle": "Consumer Price Index",
+      "koreanSubtitle": "소비자물가지수",
+      "englishExplanation": "Measures inflation rate; high CPI prompts tighter monetary policy.",
+      "koreanExplanation": "인플레이션 율을 측정하며 높은 CPI는 더 긴축적인 통화 정책을 유발합니다."
+    },
+    {
+      "id": "m2",
+      "category": "macro",
+      "englishName": "M2 Money Supply",
+      "koreanName": "M2 통화량",
+      "englishSubtitle": "Billions USD",
+      "koreanSubtitle": "십억 달러",
+      "englishExplanation": "Total money supply; increasing M2 can fuel asset prices but also inflation.",
+      "koreanExplanation": "총 통화량으로 증가하는 M2는 자산 가격을 상승시킬 수 있지만 인플레이션도 유발합니다."
+    },
+    {
+      "id": "unemployment",
+      "category": "macro",
+      "englishName": "Unemployment",
+      "koreanName": "실업률",
+      "englishSubtitle": "Rate",
+      "koreanSubtitle": "비율",
+      "englishExplanation": "Labor force jobless percentage; low rate indicates economic strength.",
+      "koreanExplanation": "노동력의 실업 비율로 낮은 비율은 경제 강도를 나타냅니다."
+    },
+    {
+      "id": "dollarIndex",
+      "category": "macro",
+      "englishName": "Dollar Index",
+      "koreanName": "달러 인덱스",
+      "englishSubtitle": "DXY",
+      "koreanSubtitle": "DXY",
+      "englishExplanation": "US dollar strength vs foreign currencies; strong dollar pressures commodities.",
+      "koreanExplanation": "미국 달러의 외국 통화 대비 강도로 강한 달러는 상품을 압박합니다."
+    },
+    {
+      "id": "vix",
+      "category": "macro",
+      "englishName": "VIX",
+      "koreanName": "공포지수",
+      "englishSubtitle": "Volatility Index",
+      "koreanSubtitle": "공포지수",
+      "englishExplanation": "Market volatility expectation; high VIX signals fear, low VIX indicates complacency.",
+      "koreanExplanation": "시장 변동성 기대로 높은 VIX는 공포, 낮은 VIX는 안주를 나타냅니다."
+    },
+    {
+      "id": "oilPrice",
+      "category": "macro",
+      "englishName": "Oil Price",
+      "koreanName": "원유가격",
+      "englishSubtitle": "WTI Crude",
+      "koreanSubtitle": "WTI 원유",
+      "englishExplanation": "WTI crude oil price; high prices pressure inflation and consumer spending.",
+      "koreanExplanation": "WTI 원유 가격으로 높은 가격은 인플레이션과 소비자 지출을 압박합니다."
+    },
+    {
+      "id": "yieldSpread",
+      "category": "macro",
+      "englishName": "Yield Spread",
+      "koreanName": "금리차",
+      "englishSubtitle": "T10Y2Y",
+      "koreanSubtitle": "T10Y2Y",
+      "englishExplanation": "Difference between 10Y and 2Y yields; inversion signals recession risk.",
+      "koreanExplanation": "10년물과 2년물 수익률의 차이로 역전은 경기 침체 위험을 신호합니다."
+    },
+    {
+      "id": "breakEvenInflation",
+      "category": "macro",
+      "englishName": "Break-Even Inflation",
+      "koreanName": "기대인플레이션",
+      "englishSubtitle": "10Y BE",
+      "koreanSubtitle": "10년물 기대인플레이션",
+      "englishExplanation": "Market's expected inflation over 10 years; high readings pressure real assets.",
+      "koreanExplanation": "10년 동안 예상되는 시장의 인플레이션으로 높은 수치는 실물 자산을 압박합니다."
+    }
+  ]
+}

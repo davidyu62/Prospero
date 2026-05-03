@@ -20,6 +20,13 @@ struct IndicatorExplanations: Codable {
     let unemployment: String
     let cpi: String
     let interaction: String
+    // v3.0 신규
+    let fundingRate: String
+    let activeAddresses: String
+    let vix: String
+    let oilPrice: String
+    let yieldSpread: String
+    let breakEvenInflation: String
 
     enum CodingKeys: String, CodingKey {
         case btcTrend = "btc_trend"
@@ -34,6 +41,13 @@ struct IndicatorExplanations: Codable {
         case unemployment
         case cpi
         case interaction
+        // v3.0 신규
+        case fundingRate = "funding_rate"
+        case activeAddresses = "active_addresses"
+        case vix
+        case oilPrice = "oil_price"
+        case yieldSpread = "yield_spread"
+        case breakEvenInflation = "break_even_inflation"
     }
 }
 
@@ -51,6 +65,13 @@ struct IndicatorExplanationsEn: Codable {
     let unemployment: String
     let cpi: String
     let interaction: String
+    // v3.0 신규
+    let fundingRate: String
+    let activeAddresses: String
+    let vix: String
+    let oilPrice: String
+    let yieldSpread: String
+    let breakEvenInflation: String
 
     enum CodingKeys: String, CodingKey {
         case btcTrend = "btc_trend"
@@ -65,6 +86,13 @@ struct IndicatorExplanationsEn: Codable {
         case unemployment
         case cpi
         case interaction
+        // v3.0 신규
+        case fundingRate = "funding_rate"
+        case activeAddresses = "active_addresses"
+        case vix
+        case oilPrice = "oil_price"
+        case yieldSpread = "yield_spread"
+        case breakEvenInflation = "break_even_inflation"
     }
 }
 
@@ -87,6 +115,14 @@ struct AIAnalysisResponse: Codable {
     let unemploymentScore: Double
     let cpiScore: Double
     let interactionScore: Double
+
+    // v3.0 신규 점수 필드 (옵셔널로 하위 호환성 유지)
+    let fundingRateScore: Double?
+    let activeAddressesScore: Double?
+    let vixScore: Double?
+    let oilPriceScore: Double?
+    let yieldSpreadScore: Double?
+    let breakEvenInflationScore: Double?
 
     // v5.0: 연결 해석 분석 (한국어)
     let crossIndicatorAnalysis: String
@@ -124,6 +160,14 @@ struct AIAnalysisResponse: Codable {
         case unemploymentScore = "unemployment_score"
         case cpiScore = "cpi_score"
         case interactionScore = "interaction_score"
+
+        // v3.0 신규
+        case fundingRateScore = "funding_rate_score"
+        case activeAddressesScore = "active_addresses_score"
+        case vixScore = "vix_score"
+        case oilPriceScore = "oil_price_score"
+        case yieldSpreadScore = "yield_spread_score"
+        case breakEvenInflationScore = "break_even_inflation_score"
 
         // v5.0
         case crossIndicatorAnalysis = "cross_indicator_analysis"

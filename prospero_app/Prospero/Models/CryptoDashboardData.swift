@@ -37,6 +37,8 @@ struct CryptoDashboardData {
     let openInterest: CryptoMetric
     let longShortRatio: CryptoMetric
     let mvrv: CryptoMetric
+    let fundingRate: CryptoMetric      // v3.0 신규
+    let activeAddresses: CryptoMetric  // v3.0 신규
 
     // ⚠️ 임시 샘플 데이터 - API 호출 실패 시에만 사용됩니다
     static let sample = CryptoDashboardData(
@@ -76,6 +78,22 @@ struct CryptoDashboardData {
             change: nil,
             changeIsPositive: nil,
             barProgress: 0.45
+        ),
+        fundingRate: CryptoMetric(
+            title: "Funding Rate",
+            subtitle: "Futures Market",
+            value: "-0.0150%",
+            change: "▼ -0.0035%",
+            changeIsPositive: false,
+            barProgress: 0.35
+        ),
+        activeAddresses: CryptoMetric(
+            title: "Active Addresses",
+            subtitle: "Network Activity",
+            value: "780,542",
+            change: "▲ +2.3%",
+            changeIsPositive: true,
+            barProgress: 0.65
         )
     )
 }

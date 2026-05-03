@@ -1,0 +1,66 @@
+### Prospero Boot - 시장 지표 API (개별 조회)
+
+@baseUrl = http://localhost:8080
+
+### 펀딩비 (실시간)
+GET {{baseUrl}}/api/indicators/funding-rate
+
+###
+
+### 활성 주소 수 - 오늘
+GET {{baseUrl}}/api/indicators/active-addresses
+
+###
+
+### 활성 주소 수 - 특정 날짜
+GET {{baseUrl}}/api/indicators/active-addresses?date=20260502
+
+###
+
+### MVRV - 오늘
+GET {{baseUrl}}/api/indicators/mvrv
+
+###
+
+### MVRV - 특정 날짜
+GET {{baseUrl}}/api/indicators/mvrv?date=20260502
+
+###
+
+### VIX - 오늘
+GET {{baseUrl}}/api/indicators/vix
+
+###
+
+### VIX - 특정 날짜
+GET {{baseUrl}}/api/indicators/vix?date=20260502
+
+###
+
+### WTI 원유 - 오늘
+GET {{baseUrl}}/api/indicators/oil
+
+###
+
+### WTI 원유 - 특정 날짜
+GET {{baseUrl}}/api/indicators/oil?date=20260502
+
+###
+
+### 10Y-2Y 금리차 - 오늘
+GET {{baseUrl}}/api/indicators/yield-spread
+
+###
+
+### 10Y-2Y 금리차 - 특정 날짜
+GET {{baseUrl}}/api/indicators/yield-spread?date=20260502
+
+###
+
+### 기대 인플레이션 - 오늘
+GET {{baseUrl}}/api/indicators/breakeven-inflation
+
+###
+
+### 기대 인플레이션 - 특정 날짜
+GET {{baseUrl}}/api/indicators/breakeven-inflation?date=20260502

@@ -407,6 +407,54 @@ struct AIDetailedExplanationCard: View {
         return Localization.shared
     }
 
+    private var explanationsList: [(String, String)] {
+        let indicatorManager = IndicatorManager.shared
+        let language = selectedLanguage
+
+        let apiExplanations: [String: String] = selectedLanguage == "ENG" ? [
+            "btcPrice": analysis.indicatorExplanationsEn.btcTrend,
+            "fearGreedIndex": analysis.indicatorExplanationsEn.fearGreed,
+            "longShortRatio": analysis.indicatorExplanationsEn.longShort,
+            "openInterest": analysis.indicatorExplanationsEn.openInterest,
+            "mvrv": analysis.indicatorExplanationsEn.mvrv,
+            "interestRate": analysis.indicatorExplanationsEn.interestRate,
+            "treasury10y": analysis.indicatorExplanationsEn.treasury10y,
+            "m2": analysis.indicatorExplanationsEn.m2,
+            "dollarIndex": analysis.indicatorExplanationsEn.dollarIndex,
+            "unemployment": analysis.indicatorExplanationsEn.unemployment,
+            "cpi": analysis.indicatorExplanationsEn.cpi
+        ] : [
+            "btcPrice": analysis.indicatorExplanations.btcTrend,
+            "fearGreedIndex": analysis.indicatorExplanations.fearGreed,
+            "longShortRatio": analysis.indicatorExplanations.longShort,
+            "openInterest": analysis.indicatorExplanations.openInterest,
+            "mvrv": analysis.indicatorExplanations.mvrv,
+            "interestRate": analysis.indicatorExplanations.interestRate,
+            "treasury10y": analysis.indicatorExplanations.treasury10y,
+            "m2": analysis.indicatorExplanations.m2,
+            "dollarIndex": analysis.indicatorExplanations.dollarIndex,
+            "unemployment": analysis.indicatorExplanations.unemployment,
+            "cpi": analysis.indicatorExplanations.cpi
+        ]
+
+        let indicatorIds = ["btcPrice", "fearGreedIndex", "longShortRatio", "openInterest", "mvrv", "fundingRate", "activeAddresses", "interestRate", "treasury10y", "m2", "dollarIndex", "unemployment", "cpi", "vix", "oilPrice", "yieldSpread", "breakEvenInflation"]
+
+        var explanations: [(String, String)] = []
+        for id in indicatorIds {
+            let name = indicatorManager.getName(id, language: language)
+            let explanation = apiExplanations[id] ?? indicatorManager.getExplanation(id, language: language)
+            if !explanation.isEmpty {
+                explanations.append((name, explanation))
+            }
+        }
+
+        let interactionName = language == "ENG" ? "Interaction" : "종합 환경"
+        let interactionExplanation = language == "ENG" ? analysis.indicatorExplanationsEn.interaction : analysis.indicatorExplanations.interaction
+        explanations.append((interactionName, interactionExplanation))
+
+        return explanations
+    }
+
     var body: some View {
         VStack(spacing: 12) {
             HStack {
@@ -417,40 +465,11 @@ struct AIDetailedExplanationCard: View {
                 Spacer()
             }
 
-            // 언어 설정에 따라 한국어 또는 영어 설명 선택
-            let explanations: [(String, String)] = selectedLanguage == "ENG" ? [
-                (localization.ai("BTC Trend"), analysis.indicatorExplanationsEn.btcTrend),
-                (localization.ai("Fear & Greed"), analysis.indicatorExplanationsEn.fearGreed),
-                (localization.ai("Long/Short Ratio"), analysis.indicatorExplanationsEn.longShort),
-                (localization.ai("Open Interest"), analysis.indicatorExplanationsEn.openInterest),
-                (localization.ai("MVRV"), analysis.indicatorExplanationsEn.mvrv),
-                (localization.ai("Interest Rate"), analysis.indicatorExplanationsEn.interestRate),
-                (localization.ai("Treasury 10Y"), analysis.indicatorExplanationsEn.treasury10y),
-                (localization.ai("M2 Supply"), analysis.indicatorExplanationsEn.m2),
-                (localization.ai("Dollar Index"), analysis.indicatorExplanationsEn.dollarIndex),
-                (localization.ai("Unemployment"), analysis.indicatorExplanationsEn.unemployment),
-                (localization.ai("CPI"), analysis.indicatorExplanationsEn.cpi),
-                (localization.ai("Interaction"), analysis.indicatorExplanationsEn.interaction)
-            ] : [
-                (localization.ai("BTC Trend"), analysis.indicatorExplanations.btcTrend),
-                (localization.ai("Fear & Greed"), analysis.indicatorExplanations.fearGreed),
-                (localization.ai("Long/Short Ratio"), analysis.indicatorExplanations.longShort),
-                (localization.ai("OI + Price"), analysis.indicatorExplanations.openInterest),
-                (localization.ai("MVRV"), analysis.indicatorExplanations.mvrv),
-                (localization.ai("Interest Rate"), analysis.indicatorExplanations.interestRate),
-                (localization.ai("Treasury 10Y"), analysis.indicatorExplanations.treasury10y),
-                (localization.ai("M2 Supply"), analysis.indicatorExplanations.m2),
-                (localization.ai("Dollar Index"), analysis.indicatorExplanations.dollarIndex),
-                (localization.ai("Unemployment"), analysis.indicatorExplanations.unemployment),
-                (localization.ai("CPI"), analysis.indicatorExplanations.cpi),
-                (localization.ai("Interaction"), analysis.indicatorExplanations.interaction)
-            ]
-
             VStack(spacing: 10) {
-                ForEach(explanations.indices, id: \.self) { index in
+                ForEach(explanationsList.indices, id: \.self) { index in
                     ExplanationRow(
-                        title: explanations[index].0,
-                        text: explanations[index].1,
+                        title: explanationsList[index].0,
+                        text: explanationsList[index].1,
                         theme: theme
                     )
                 }
@@ -567,7 +586,9 @@ struct AIIndicatorCard: View {
                     indicators: [
                         (localization.ai("Fear & Greed"), crypto.fearGreedIndex.map { String(format: "%.0f", Double($0)) } ?? "N/A", ""),
                         (localization.ai("Long/Short Ratio"), crypto.longShortRatio.map { String(format: "%.2f", $0) } ?? "N/A", selectedLanguage == "ENG" ? "x" : "배"),
-                        (localization.ai("Open Interest"), crypto.openInterest.map { String(format: "%.0f", $0) } ?? "N/A", "BTC")
+                        (localization.ai("Open Interest"), crypto.openInterest.map { String(format: "%.0f", $0) } ?? "N/A", "BTC"),
+                        (localization.cryptoMetric("fundingRate"), crypto.fundingRate.map { String(format: "%.4f%%", $0 * 100) } ?? "N/A", ""),
+                        (localization.cryptoMetric("activeAddresses"), crypto.activeAddresses.map { String(format: "%.0f", Double($0)) } ?? "N/A", "")
                     ],
                     theme: theme,
                     isCrypto: true
@@ -585,7 +606,11 @@ struct AIIndicatorCard: View {
                         (localization.ai("M2 Supply"), macro.m2.map { String(format: "%.0f", $0 / 1000) } ?? "N/A", selectedLanguage == "ENG" ? "billion USD" : "조 USD"),
                         (localization.ai("Dollar Index"), macro.dollarIndex.map { String(format: "%.2f", $0) } ?? "N/A", ""),
                         (localization.ai("Unemployment"), macro.unemployment.map { String(format: "%.2f", $0) } ?? "N/A", "%"),
-                        (localization.ai("CPI"), macro.cpi.map { String(format: "%.2f", $0 / 100) } ?? "N/A", "%")
+                        (localization.ai("CPI"), macro.cpi.map { String(format: "%.2f", $0 / 100) } ?? "N/A", "%"),
+                        (localization.macroMetric("vix"), macro.vix.map { String(format: "%.2f", $0) } ?? "N/A", ""),
+                        (localization.macroMetric("oilPrice"), macro.oilPrice.map { String(format: "$%.2f", $0) } ?? "N/A", ""),
+                        (localization.macroMetric("yieldSpread"), macro.yieldSpread.map { String(format: "%+.2f%%", $0) } ?? "N/A", ""),
+                        (localization.macroMetric("breakEvenInflation"), macro.breakEvenInflation.map { String(format: "%.2f%%", $0) } ?? "N/A", "")
                     ],
                     theme: theme,
                     isCrypto: false
