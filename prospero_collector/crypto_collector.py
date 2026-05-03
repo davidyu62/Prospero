@@ -92,7 +92,7 @@ def _get_long_short_ratio() -> Optional[Decimal]:
         if data and isinstance(data, list) and len(data) > 0:
             item = data[0]
             ratio = item.get("longShortRatio")
-            if ratio:
+            if ratio is not None:
                 result = Decimal(str(ratio)).quantize(Decimal("0.0001"))
                 print(f"[INFO] Long/Short Ratio 조회 성공: {result}")
                 return result
@@ -119,7 +119,7 @@ def _get_fear_greed_index() -> Optional[int]:
         data = r.json()
         if "data" in data and data["data"]:
             value = data["data"][0].get("value")
-            if value:
+            if value is not None:
                 result = int(value)
                 print(f"[INFO] Fear & Greed Index 조회 성공: {result}")
                 return result
@@ -159,7 +159,7 @@ def _get_mvrv(date: str) -> Optional[Decimal]:
         if items:
             latest = items[-1]
             value = latest.get("CapMVRVCur")
-            if value:
+            if value is not None:
                 result = Decimal(str(value)).quantize(Decimal("0.0001"))
                 print(f"[INFO] MVRV 조회 성공: {result}")
                 return result
@@ -205,7 +205,7 @@ def _get_funding_rate() -> Optional[Decimal]:
         if data and isinstance(data, list) and len(data) > 0:
             item = data[0]
             funding_rate = item.get("fundingRate")
-            if funding_rate:
+            if funding_rate is not None:
                 result = Decimal(str(funding_rate)).quantize(Decimal("0.000001"))
                 print(f"[INFO] Funding Rate 조회 성공: {result}")
                 return result
@@ -245,7 +245,7 @@ def _get_active_addresses(date: str) -> Optional[int]:
         if items:
             latest = items[-1]
             value = latest.get("AdrActCnt")
-            if value:
+            if value is not None:
                 result = int(float(value))
                 print(f"[INFO] Active Addresses 조회 성공: {result}")
                 return result
