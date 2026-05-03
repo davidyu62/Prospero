@@ -117,8 +117,21 @@ class Localization {
     
     // MARK: - Crypto Metrics
     func cryptoMetric(_ key: String) -> String {
-        // 지표 ID로 IndicatorManager에서 조회
+        // 1. 지표 ID로 IndicatorManager에서 조회
         if let indicator = IndicatorManager.shared.getIndicator(key) {
+            return language == "KOR" ? indicator.koreanName : indicator.englishName
+        }
+
+        // 2. 영어 제목 → 지표 ID 매핑 (MetricCard에서 영어 제목을 전달할 때)
+        let titleToIdMap: [String: String] = [
+            "Open Interest": "openInterest",
+            "Long/Short Ratio": "longShortRatio",
+            "MVRV": "mvrv",
+            "Funding Rate": "fundingRate",
+            "Active Addresses": "activeAddresses"
+        ]
+
+        if let indicatorId = titleToIdMap[key], let indicator = IndicatorManager.shared.getIndicator(indicatorId) {
             return language == "KOR" ? indicator.koreanName : indicator.englishName
         }
 
@@ -143,8 +156,26 @@ class Localization {
     
     // MARK: - Macro Metrics
     func macroMetric(_ key: String) -> String {
-        // 지표 ID로 IndicatorManager에서 조회
+        // 1. 지표 ID로 IndicatorManager에서 조회
         if let indicator = IndicatorManager.shared.getIndicator(key) {
+            return language == "KOR" ? indicator.koreanName : indicator.englishName
+        }
+
+        // 2. 영어 제목 → 지표 ID 매핑 (MetricCard에서 영어 제목을 전달할 때)
+        let titleToIdMap: [String: String] = [
+            "Interest Rate": "interestRate",
+            "10Y Treasury": "treasury10y",
+            "M2 Money Supply": "m2",
+            "Dollar Index": "dollarIndex",
+            "Unemployment": "unemployment",
+            "CPI": "cpi",
+            "VIX": "vix",
+            "Oil Price": "oilPrice",
+            "Yield Spread": "yieldSpread",
+            "Break-Even Inflation": "breakEvenInflation"
+        ]
+
+        if let indicatorId = titleToIdMap[key], let indicator = IndicatorManager.shared.getIndicator(indicatorId) {
             return language == "KOR" ? indicator.koreanName : indicator.englishName
         }
 
