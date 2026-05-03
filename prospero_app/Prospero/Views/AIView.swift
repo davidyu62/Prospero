@@ -407,6 +407,54 @@ struct AIDetailedExplanationCard: View {
         return Localization.shared
     }
 
+    private var explanationsList: [(String, String)] {
+        let indicatorManager = IndicatorManager.shared
+        let language = selectedLanguage
+
+        let apiExplanations: [String: String] = selectedLanguage == "ENG" ? [
+            "btcPrice": analysis.indicatorExplanationsEn.btcTrend,
+            "fearGreedIndex": analysis.indicatorExplanationsEn.fearGreed,
+            "longShortRatio": analysis.indicatorExplanationsEn.longShort,
+            "openInterest": analysis.indicatorExplanationsEn.openInterest,
+            "mvrv": analysis.indicatorExplanationsEn.mvrv,
+            "interestRate": analysis.indicatorExplanationsEn.interestRate,
+            "treasury10y": analysis.indicatorExplanationsEn.treasury10y,
+            "m2": analysis.indicatorExplanationsEn.m2,
+            "dollarIndex": analysis.indicatorExplanationsEn.dollarIndex,
+            "unemployment": analysis.indicatorExplanationsEn.unemployment,
+            "cpi": analysis.indicatorExplanationsEn.cpi
+        ] : [
+            "btcPrice": analysis.indicatorExplanations.btcTrend,
+            "fearGreedIndex": analysis.indicatorExplanations.fearGreed,
+            "longShortRatio": analysis.indicatorExplanations.longShort,
+            "openInterest": analysis.indicatorExplanations.openInterest,
+            "mvrv": analysis.indicatorExplanations.mvrv,
+            "interestRate": analysis.indicatorExplanations.interestRate,
+            "treasury10y": analysis.indicatorExplanations.treasury10y,
+            "m2": analysis.indicatorExplanations.m2,
+            "dollarIndex": analysis.indicatorExplanations.dollarIndex,
+            "unemployment": analysis.indicatorExplanations.unemployment,
+            "cpi": analysis.indicatorExplanations.cpi
+        ]
+
+        let indicatorIds = ["btcPrice", "fearGreedIndex", "longShortRatio", "openInterest", "mvrv", "fundingRate", "activeAddresses", "interestRate", "treasury10y", "m2", "dollarIndex", "unemployment", "cpi", "vix", "oilPrice", "yieldSpread", "breakEvenInflation"]
+
+        var explanations: [(String, String)] = []
+        for id in indicatorIds {
+            let name = indicatorManager.getName(id, language: language)
+            let explanation = apiExplanations[id] ?? indicatorManager.getExplanation(id, language: language)
+            if !explanation.isEmpty {
+                explanations.append((name, explanation))
+            }
+        }
+
+        let interactionName = language == "ENG" ? "Interaction" : "종합 환경"
+        let interactionExplanation = language == "ENG" ? analysis.indicatorExplanationsEn.interaction : analysis.indicatorExplanations.interaction
+        explanations.append((interactionName, interactionExplanation))
+
+        return explanations
+    }
+
     var body: some View {
         VStack(spacing: 12) {
             HStack {
@@ -417,59 +465,11 @@ struct AIDetailedExplanationCard: View {
                 Spacer()
             }
 
-            // IndicatorManager와 API 데이터를 통합하여 지표별 설명 생성
-            let indicatorManager = IndicatorManager.shared
-            let language = selectedLanguage
-
-            // API에서 제공하는 설명
-            let apiExplanations: [String: String] = selectedLanguage == "ENG" ? [
-                "btcPrice": analysis.indicatorExplanationsEn.btcTrend,
-                "fearGreedIndex": analysis.indicatorExplanationsEn.fearGreed,
-                "longShortRatio": analysis.indicatorExplanationsEn.longShort,
-                "openInterest": analysis.indicatorExplanationsEn.openInterest,
-                "mvrv": analysis.indicatorExplanationsEn.mvrv,
-                "interestRate": analysis.indicatorExplanationsEn.interestRate,
-                "treasury10y": analysis.indicatorExplanationsEn.treasury10y,
-                "m2": analysis.indicatorExplanationsEn.m2,
-                "dollarIndex": analysis.indicatorExplanationsEn.dollarIndex,
-                "unemployment": analysis.indicatorExplanationsEn.unemployment,
-                "cpi": analysis.indicatorExplanationsEn.cpi
-            ] : [
-                "btcPrice": analysis.indicatorExplanations.btcTrend,
-                "fearGreedIndex": analysis.indicatorExplanations.fearGreed,
-                "longShortRatio": analysis.indicatorExplanations.longShort,
-                "openInterest": analysis.indicatorExplanations.openInterest,
-                "mvrv": analysis.indicatorExplanations.mvrv,
-                "interestRate": analysis.indicatorExplanations.interestRate,
-                "treasury10y": analysis.indicatorExplanations.treasury10y,
-                "m2": analysis.indicatorExplanations.m2,
-                "dollarIndex": analysis.indicatorExplanations.dollarIndex,
-                "unemployment": analysis.indicatorExplanations.unemployment,
-                "cpi": analysis.indicatorExplanations.cpi
-            ]
-
-            // 지표 목록 구성 (기존 + 신규 6개)
-            let indicatorIds = ["btcPrice", "fearGreedIndex", "longShortRatio", "openInterest", "mvrv", "fundingRate", "activeAddresses", "interestRate", "treasury10y", "m2", "dollarIndex", "unemployment", "cpi", "vix", "oilPrice", "yieldSpread", "breakEvenInflation"]
-
-            var explanations: [(String, String)] = []
-            for id in indicatorIds {
-                let name = indicatorManager.getName(id, language: language)
-                let explanation = apiExplanations[id] ?? indicatorManager.getExplanation(id, language: language)
-                if !explanation.isEmpty {
-                    explanations.append((name, explanation))
-                }
-            }
-
-            // Interaction 설명 추가
-            let interactionName = language == "ENG" ? "Interaction" : "종합 환경"
-            let interactionExplanation = language == "ENG" ? analysis.indicatorExplanationsEn.interaction : analysis.indicatorExplanations.interaction
-            explanations.append((interactionName, interactionExplanation))
-
             VStack(spacing: 10) {
-                ForEach(explanations.indices, id: \.self) { index in
+                ForEach(explanationsList.indices, id: \.self) { index in
                     ExplanationRow(
-                        title: explanations[index].0,
-                        text: explanations[index].1,
+                        title: explanationsList[index].0,
+                        text: explanationsList[index].1,
                         theme: theme
                     )
                 }
