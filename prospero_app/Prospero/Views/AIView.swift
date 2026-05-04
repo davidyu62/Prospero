@@ -11,8 +11,6 @@ struct AIView: View {
     @AppStorage("selectedLanguage") private var selectedLanguage: String = "ENG"
 
     @State private var analysis: AIAnalysisResponse?
-    @State private var cryptoData: CryptoDataItem?
-    @State private var macroData: MacroDataItem?
     @State private var isLoading = true
     @State private var errorMessage: String?
 
@@ -87,14 +85,6 @@ struct AIView: View {
                             // 연결 해석 분석 (v5.0)
                             AICrossIndicatorAnalysisCard(analysis: analysis)
 
-                            // 지표 분석 (원시값)
-                            if let crypto = cryptoData, let macro = macroData {
-                                AIIndicatorCard(crypto: crypto, macro: macro)
-                            }
-
-                            // 지표별 상세 설명
-                            AIDetailedExplanationCard(analysis: analysis)
-
                             Spacer()
                                 .frame(height: 20)
                         }
@@ -139,8 +129,6 @@ struct AIView: View {
         do {
             let result = try await AIAnalysisAPIService.shared.fetchAIAnalysis(for: analysisDate)
             self.analysis = result.analysis
-            self.cryptoData = result.crypto
-            self.macroData = result.macro
             isLoading = false
         } catch {
             self.errorMessage = localization.ai("Unable to load data.")
@@ -396,112 +384,6 @@ struct IndicatorGroup: View {
     }
 }
 
-// MARK: - 상세 설명 카드
-struct AIDetailedExplanationCard: View {
-    @EnvironmentObject var theme: ThemeManager
-    @AppStorage("selectedLanguage") private var selectedLanguage: String = "ENG"
-    let analysis: AIAnalysisResponse
-
-    private var localization: Localization {
-        Localization.shared.language = selectedLanguage
-        return Localization.shared
-    }
-
-    var body: some View {
-        VStack(spacing: 12) {
-            HStack {
-                Text(selectedLanguage == "ENG" ? "Indicator Explanations" : "지표 설명")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(theme.secondaryText)
-
-                Spacer()
-            }
-
-            // 언어 설정에 따라 한국어 또는 영어 설명 선택
-            let explanations: [(String, String)] = selectedLanguage == "ENG" ? [
-                (localization.ai("BTC Trend"), analysis.indicatorExplanationsEn.btcTrend),
-                (localization.ai("Fear & Greed"), analysis.indicatorExplanationsEn.fearGreed),
-                (localization.ai("Long/Short Ratio"), analysis.indicatorExplanationsEn.longShort),
-                (localization.ai("Open Interest"), analysis.indicatorExplanationsEn.openInterest),
-                (localization.ai("MVRV"), analysis.indicatorExplanationsEn.mvrv),
-                (localization.ai("Interest Rate"), analysis.indicatorExplanationsEn.interestRate),
-                (localization.ai("Treasury 10Y"), analysis.indicatorExplanationsEn.treasury10y),
-                (localization.ai("M2 Supply"), analysis.indicatorExplanationsEn.m2),
-                (localization.ai("Dollar Index"), analysis.indicatorExplanationsEn.dollarIndex),
-                (localization.ai("Unemployment"), analysis.indicatorExplanationsEn.unemployment),
-                (localization.ai("CPI"), analysis.indicatorExplanationsEn.cpi),
-                (localization.ai("Interaction"), analysis.indicatorExplanationsEn.interaction)
-            ] : [
-                (localization.ai("BTC Trend"), analysis.indicatorExplanations.btcTrend),
-                (localization.ai("Fear & Greed"), analysis.indicatorExplanations.fearGreed),
-                (localization.ai("Long/Short Ratio"), analysis.indicatorExplanations.longShort),
-                (localization.ai("OI + Price"), analysis.indicatorExplanations.openInterest),
-                (localization.ai("MVRV"), analysis.indicatorExplanations.mvrv),
-                (localization.ai("Interest Rate"), analysis.indicatorExplanations.interestRate),
-                (localization.ai("Treasury 10Y"), analysis.indicatorExplanations.treasury10y),
-                (localization.ai("M2 Supply"), analysis.indicatorExplanations.m2),
-                (localization.ai("Dollar Index"), analysis.indicatorExplanations.dollarIndex),
-                (localization.ai("Unemployment"), analysis.indicatorExplanations.unemployment),
-                (localization.ai("CPI"), analysis.indicatorExplanations.cpi),
-                (localization.ai("Interaction"), analysis.indicatorExplanations.interaction)
-            ]
-
-            VStack(spacing: 10) {
-                ForEach(explanations.indices, id: \.self) { index in
-                    ExplanationRow(
-                        title: explanations[index].0,
-                        text: explanations[index].1,
-                        theme: theme
-                    )
-                }
-            }
-            .padding(16)
-            .background(
-                RoundedRectangle(cornerRadius: theme.buttonCornerRadius)
-                    .fill(theme.cardBackground)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: theme.buttonCornerRadius)
-                    .stroke(theme.cardBorderColor, lineWidth: 1)
-            )
-            .shadow(
-                color: theme.cardShadow,
-                radius: 12,
-                x: 0,
-                y: 4
-            )
-        }
-    }
-}
-
-// MARK: - 설명 행
-struct ExplanationRow: View {
-    let title: String
-    let text: String
-    let theme: ThemeManager
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(theme.primaryText)
-            Text(text)
-                .font(.system(size: 12, weight: .regular))
-                .foregroundColor(theme.secondaryText)
-                .lineSpacing(1.5)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
-        .background(theme.cardIconBackground)
-        .cornerRadius(8)
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(theme.cardBorderColor, lineWidth: 1)
-        )
-    }
-}
-
 // MARK: - 점수 Pill
 struct ScorePill: View {
     let label: String
@@ -531,144 +413,6 @@ struct ScorePill: View {
             RoundedRectangle(cornerRadius: 8)
                 .fill(color.opacity(0.1))
         )
-    }
-}
-
-// MARK: - 지표 분석 카드 (원시값)
-struct AIIndicatorCard: View {
-    @EnvironmentObject var theme: ThemeManager
-    @AppStorage("selectedLanguage") private var selectedLanguage: String = "ENG"
-    let crypto: CryptoDataItem
-    let macro: MacroDataItem
-
-    private var localization: Localization {
-        Localization.shared.language = selectedLanguage
-        return Localization.shared
-    }
-
-    var body: some View {
-        VStack(spacing: 16) {
-            HStack(spacing: 8) {
-                Image(systemName: "chart.bar.fill")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(theme.primaryText)
-
-                Text(localization.ai("Market Indicators"))
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(theme.primaryText)
-
-                Spacer()
-            }
-
-            VStack(spacing: 12) {
-                // 크립토 지표
-                IndicatorValueGroup(
-                    title: localization.ai("Crypto Indicators"),
-                    indicators: [
-                        (localization.ai("Fear & Greed"), crypto.fearGreedIndex.map { String(format: "%.0f", Double($0)) } ?? "N/A", ""),
-                        (localization.ai("Long/Short Ratio"), crypto.longShortRatio.map { String(format: "%.2f", $0) } ?? "N/A", selectedLanguage == "ENG" ? "x" : "배"),
-                        (localization.ai("Open Interest"), crypto.openInterest.map { String(format: "%.0f", $0) } ?? "N/A", "BTC")
-                    ],
-                    theme: theme,
-                    isCrypto: true
-                )
-
-                Divider()
-                    .foregroundColor(theme.cardBackground)
-
-                // 매크로 지표
-                IndicatorValueGroup(
-                    title: localization.ai("Macro Indicators"),
-                    indicators: [
-                        (localization.ai("Interest Rate"), macro.interestRate.map { String(format: "%.2f", $0) } ?? "N/A", "%"),
-                        (localization.ai("Treasury 10Y"), macro.treasury10y.map { String(format: "%.2f", $0) } ?? "N/A", "%"),
-                        (localization.ai("M2 Supply"), macro.m2.map { String(format: "%.0f", $0 / 1000) } ?? "N/A", selectedLanguage == "ENG" ? "billion USD" : "조 USD"),
-                        (localization.ai("Dollar Index"), macro.dollarIndex.map { String(format: "%.2f", $0) } ?? "N/A", ""),
-                        (localization.ai("Unemployment"), macro.unemployment.map { String(format: "%.2f", $0) } ?? "N/A", "%"),
-                        (localization.ai("CPI"), macro.cpi.map { String(format: "%.2f", $0 / 100) } ?? "N/A", "%")
-                    ],
-                    theme: theme,
-                    isCrypto: false
-                )
-            }
-            .padding(16)
-            .background(
-                RoundedRectangle(cornerRadius: theme.buttonCornerRadius)
-                    .fill(theme.cardBackground)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: theme.buttonCornerRadius)
-                    .stroke(theme.cardBorderColor, lineWidth: 1)
-            )
-            .shadow(
-                color: theme.cardShadow,
-                radius: 12,
-                x: 0,
-                y: 4
-            )
-        }
-    }
-}
-
-// MARK: - 지표값 그룹
-struct IndicatorValueGroup: View {
-    let title: String
-    let indicators: [(String, String, String)]
-    let theme: ThemeManager
-    let isCrypto: Bool
-
-    var groupColor: Color {
-        isCrypto ? Color(red: 0.2, green: 0.8, blue: 0.4) : Color(red: 0.4, green: 0.6, blue: 1.0)
-    }
-
-    var body: some View {
-        VStack(spacing: 12) {
-            HStack(spacing: 8) {
-                Circle()
-                    .fill(groupColor)
-                    .frame(width: 8, height: 8)
-
-                Text(title)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(theme.secondaryText)
-
-                Spacer()
-            }
-
-            VStack(spacing: 10) {
-                ForEach(indicators, id: \.0) { label, value, unit in
-                    VStack(spacing: 6) {
-                        HStack {
-                            Text(label)
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(theme.secondaryText)
-
-                            Spacer()
-                        }
-
-                        HStack(spacing: 4) {
-                            Text(value)
-                                .font(.system(size: 16, weight: .bold))
-                                .foregroundColor(groupColor)
-
-                            if !unit.isEmpty {
-                                Text(unit)
-                                    .font(.system(size: 12, weight: .medium))
-                                    .foregroundColor(theme.secondaryText)
-                            }
-
-                            Spacer()
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(groupColor.opacity(0.1))
-                        )
-                    }
-                }
-            }
-        }
     }
 }
 
