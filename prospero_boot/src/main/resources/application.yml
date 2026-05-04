@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: prospero-boot
+
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+logging:
+  level:
+    root: INFO
+    com.prospero: DEBUG
+
+fred:
+  api:
+    key: 034103dc7fa899c718ba019967c60740

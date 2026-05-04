@@ -19,6 +19,8 @@ struct CryptoDashboardView: View {
     @State private var showOpenInterestInfo = false
     @State private var showLongShortRatioInfo = false
     @State private var showMvrvInfo = false
+    @State private var showFundingRateInfo = false        // v3.0 신규
+    @State private var showActiveAddressesInfo = false   // v3.0 신규
     @State private var updatedTime: String = ""
     @State private var showAdNotReadyAlert = false
     @AppStorage("selectedLanguage") private var selectedLanguage: String = "ENG"
@@ -104,6 +106,14 @@ struct CryptoDashboardView: View {
                                         .onTapGesture {
                                             showMvrvInfo = true
                                         }
+                                    MetricCard(metric: dashboardData.fundingRate, theme: theme)
+                                        .onTapGesture {
+                                            showFundingRateInfo = true
+                                        }
+                                    MetricCard(metric: dashboardData.activeAddresses, theme: theme)
+                                        .onTapGesture {
+                                            showActiveAddressesInfo = true
+                                        }
                                 }
                                 .padding(.horizontal, 20)
                                 .padding(.bottom, 120) // 콘텐츠 하단 여백 (배너 + 네비게이션 바)
@@ -176,6 +186,12 @@ struct CryptoDashboardView: View {
         .sheet(isPresented: $showMvrvInfo) {
             MVRVInfoSheet()
         }
+        .sheet(isPresented: $showFundingRateInfo) {
+            FundingRateInfoSheet()
+        }
+        .sheet(isPresented: $showActiveAddressesInfo) {
+            ActiveAddressesInfoSheet()
+        }
         .alert(localization.common("Ad Not Ready"), isPresented: $showAdNotReadyAlert) {
             Button(localization.common("OK"), role: .cancel) {}
         } message: {
@@ -245,6 +261,13 @@ struct CryptoDashboardView: View {
                     previous: previousData?.longShortRatio ?? 0.0
                 )
                 let mvrvValue = data.mvrv ?? 1.0
+                let fundingRateValue = data.fundingRate ?? -0.015  // v3.0 신규
+                let fundingRateChange = (previousData?.fundingRate ?? -0.015) - fundingRateValue  // v3.0 신규
+                let activeAddressesValue = data.activeAddresses ?? 750000  // v3.0 신규
+                let activeAddressesChange = calculatePercentageChange(
+                    current: Double(data.activeAddresses ?? 750000),
+                    previous: Double(previousData?.activeAddresses ?? 750000)
+                )  // v3.0 신규
 
                 updatedTime = formatDateString(displayDate)
                 dashboardData = CryptoDashboardData(
@@ -281,6 +304,22 @@ struct CryptoDashboardView: View {
                         change: nil,
                         changeIsPositive: nil,
                         barProgress: min(max((mvrvValue - 0.5) / 2.0, 0.0), 1.0)
+                    ),
+                    fundingRate: CryptoMetric(
+                        title: "Funding Rate",
+                        subtitle: "Futures Market",
+                        value: String(format: "%.4f%%", fundingRateValue * 100),
+                        change: fundingRateChange != 0 ? String(format: "%+.4f%%", fundingRateChange * 100) : nil,
+                        changeIsPositive: fundingRateChange < 0,
+                        barProgress: nil
+                    ),
+                    activeAddresses: CryptoMetric(
+                        title: "Active Addresses",
+                        subtitle: "Network Activity",
+                        value: formatNumber(Int64(activeAddressesValue)),
+                        change: formatChange(activeAddressesChange),
+                        changeIsPositive: activeAddressesChange >= 0,
+                        barProgress: nil
                     )
                 )
                 print("✅ 데이터 업데이트 완료 - \(displayDate)")
@@ -306,7 +345,9 @@ struct CryptoDashboardView: View {
                         change: nil,
                         changeIsPositive: nil,
                         barProgress: nil
-                    )
+                    ),
+                    fundingRate: CryptoMetric(title: "Funding Rate", subtitle: "Futures Market", value: "0.0000%", change: nil, changeIsPositive: nil, barProgress: nil),
+                    activeAddresses: CryptoMetric(title: "Active Addresses", subtitle: "Network Activity", value: "0", change: nil, changeIsPositive: nil, barProgress: nil)
                 )
             }
         } catch {
@@ -355,7 +396,9 @@ struct CryptoDashboardView: View {
                     change: nil,
                     changeIsPositive: nil,
                     barProgress: nil
-                )
+                ),
+                fundingRate: CryptoMetric(title: "Funding Rate", subtitle: "Futures Market", value: "0.0000%", change: nil, changeIsPositive: nil, barProgress: nil),
+                activeAddresses: CryptoMetric(title: "Active Addresses", subtitle: "Network Activity", value: "0", change: nil, changeIsPositive: nil, barProgress: nil)
             )
             
             errorMessage = "데이터를 불러올 수 없습니다: \(error.localizedDescription)"
@@ -736,7 +779,7 @@ struct MetricCard: View {
                     .overlay(
                         Image(systemName: iconForMetric(metric.title))
                             .font(.system(size: 20))
-                            .foregroundColor(theme.secondaryText)
+                            .foregroundColor(colorForMetricIcon(metric.title, metric.change, metric.changeIsPositive, metric.barProgress))
                     )
 
                 VStack(alignment: .leading, spacing: 4) {
@@ -838,14 +881,53 @@ struct MetricCard: View {
 
     private func iconForMetric(_ title: String) -> String {
         switch title {
-        case "New Addresses":
-            return "doc.on.doc.fill"
         case "Open Interest":
             return "chart.line.uptrend.xyaxis"
         case "Long/Short Ratio":
             return "arrow.left.arrow.right"
+        case "MVRV":
+            return "chart.bar.fill"
+        case "Funding Rate":
+            return "percent"
+        case "Active Addresses":
+            return "network"
         default:
             return "circle.fill"
+        }
+    }
+
+    private func colorForMetricIcon(_ title: String, _ change: String?, _ changeIsPositive: Bool?, _ barProgress: Double?) -> Color {
+        switch title {
+        case "Open Interest":
+            if let progress = barProgress {
+                return progress >= 0.5 ? .successColor : .warningColor
+            }
+            return .blue
+        case "Long/Short Ratio":
+            if let progress = barProgress {
+                return progress >= 0.5 ? .successColor : .dangerColor
+            }
+            return .blue
+        case "MVRV":
+            if let progress = barProgress {
+                return progress >= 0.5 ? .successColor : .warningColor
+            }
+            return .blue
+        case "Funding Rate":
+            // 펀딩비: 음수(숏 우위) = 좋음 = 초록색
+            if let change = change {
+                let isNegative = change.contains("▼") || change.contains("-")
+                return isNegative ? .successColor : .dangerColor
+            }
+            return .blue
+        case "Active Addresses":
+            // 활성주소: 상승 = 좋음
+            if let isPositive = changeIsPositive {
+                return isPositive ? .successColor : .warningColor
+            }
+            return .blue
+        default:
+            return .blue
         }
     }
 
@@ -1455,29 +1537,201 @@ struct MVRVInfoSheet: View {
     }
 }
 
+// MARK: - Funding Rate Info Sheet
+struct FundingRateInfoSheet: View {
+    @Environment(\.dismiss) var dismiss
+    @AppStorage("selectedLanguage") private var selectedLanguage: String = "ENG"
+
+    private var localization: Localization {
+        Localization.shared.language = selectedLanguage
+        return Localization.shared
+    }
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    // Header Icon
+                    HStack {
+                        Spacer()
+                        Circle()
+                            .fill(Color.cyan.opacity(0.2))
+                            .frame(width: 80, height: 80)
+                            .overlay(
+                                Image(systemName: "waveform.path")
+                                    .font(.system(size: 40, weight: .bold))
+                                    .foregroundColor(.cyan)
+                            )
+                        Spacer()
+                    }
+                    .padding(.top, 20)
+
+                    // Title
+                    Text(localization.cryptoMetric("Funding Rate"))
+                        .font(.system(size: 28, weight: .bold))
+                        .foregroundColor(.primary)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
+
+                    // Description
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text(localization.infoSheet("What is Funding Rate?"))
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundColor(.primary)
+
+                        Text(localization.infoSheet("Funding Rate is the periodic interest that traders with leveraged positions pay to each other in the futures market. It keeps perpetual futures prices aligned with spot prices and reflects the market's sentiment about future price direction."))
+                            .font(.system(size: 16))
+                            .foregroundColor(.secondary)
+                            .lineSpacing(4)
+
+                        Text(localization.infoSheet("Key Points"))
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundColor(.primary)
+                            .padding(.top, 8)
+
+                        VStack(alignment: .leading, spacing: 12) {
+                            InfoRow(icon: "arrow.up.circle.fill", title: localization.infoSheet("Positive Rate"), description: localization.infoSheet("Longs pay shorts (market bullish), contrarian signal"))
+                            InfoRow(icon: "arrow.down.circle.fill", title: localization.infoSheet("Negative Rate"), description: localization.infoSheet("Shorts pay longs (market bearish), potential bounce"))
+                            InfoRow(icon: "exclamationmark.triangle.fill", title: localization.infoSheet("Extreme Rates"), description: localization.infoSheet("Very high rates indicate overlevered positions"))
+                        }
+
+                        Text(localization.infoSheet("How It Works"))
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundColor(.primary)
+                            .padding(.top, 8)
+
+                        Text(localization.infoSheet("Traders pay funding rates every 8 hours on Binance. When rates are positive and high, long traders pay a lot to maintain positions, creating a contrarian signal that shorts are being squeezed out. When rates are negative, short traders pay longs, suggesting oversold conditions. Monitoring funding rates helps traders identify potential reversals and extreme market conditions."))
+                            .font(.system(size: 16))
+                            .foregroundColor(.secondary)
+                            .lineSpacing(4)
+                    }
+                    .padding(.horizontal, 20)
+                }
+                .padding(.bottom, 40)
+            }
+            .background(Color(.systemBackground))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(localization.common("Done")) {
+                        dismiss()
+                    }
+                    .foregroundColor(.blue)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Active Addresses Info Sheet
+struct ActiveAddressesInfoSheet: View {
+    @Environment(\.dismiss) var dismiss
+    @AppStorage("selectedLanguage") private var selectedLanguage: String = "ENG"
+
+    private var localization: Localization {
+        Localization.shared.language = selectedLanguage
+        return Localization.shared
+    }
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    // Header Icon
+                    HStack {
+                        Spacer()
+                        Circle()
+                            .fill(Color.indigo.opacity(0.2))
+                            .frame(width: 80, height: 80)
+                            .overlay(
+                                Image(systemName: "network")
+                                    .font(.system(size: 40, weight: .bold))
+                                    .foregroundColor(.indigo)
+                            )
+                        Spacer()
+                    }
+                    .padding(.top, 20)
+
+                    // Title
+                    Text(localization.cryptoMetric("Active Addresses"))
+                        .font(.system(size: 28, weight: .bold))
+                        .foregroundColor(.primary)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
+
+                    // Description
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text(localization.infoSheet("What are Active Addresses?"))
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundColor(.primary)
+
+                        Text(localization.infoSheet("Active Addresses measures the number of unique Bitcoin addresses that had some activity (sending or receiving BTC) in the last 24 hours. It's a key indicator of Bitcoin network adoption and usage intensity."))
+                            .font(.system(size: 16))
+                            .foregroundColor(.secondary)
+                            .lineSpacing(4)
+
+                        Text(localization.infoSheet("Key Points"))
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundColor(.primary)
+                            .padding(.top, 8)
+
+                        VStack(alignment: .leading, spacing: 12) {
+                            InfoRow(icon: "arrow.up.circle.fill", title: localization.infoSheet("Rising Addresses"), description: localization.infoSheet("Increasing network adoption and activity"))
+                            InfoRow(icon: "arrow.down.circle.fill", title: localization.infoSheet("Falling Addresses"), description: localization.infoSheet("Decreasing network usage, potential weakness"))
+                            InfoRow(icon: "network", title: localization.infoSheet("Network Health"), description: localization.infoSheet("Reflects actual Bitcoin transaction volume"))
+                        }
+
+                        Text(localization.infoSheet("How It Works"))
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundColor(.primary)
+                            .padding(.top, 8)
+
+                        Text(localization.infoSheet("Each address represents a unique wallet or participant on the network. Rising active addresses suggest growing network adoption and user engagement. When compared to the 30-day average, surges in active addresses can indicate capitulation (panic selling) or renewed interest. This metric is useful for confirming market movements - price increases with rising addresses suggest genuine growth, while price increases with falling addresses may be driven by speculation rather than real adoption."))
+                            .font(.system(size: 16))
+                            .foregroundColor(.secondary)
+                            .lineSpacing(4)
+                    }
+                    .padding(.horizontal, 20)
+                }
+                .padding(.bottom, 40)
+            }
+            .background(Color(.systemBackground))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(localization.common("Done")) {
+                        dismiss()
+                    }
+                    .foregroundColor(.blue)
+                }
+            }
+        }
+    }
+}
+
 // MARK: - Info Row
 struct InfoRow: View {
     let icon: String
     let title: String
     let description: String
-    
+
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 20))
                 .foregroundColor(.orange)
                 .frame(width: 24)
-            
+
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(.primary)
-                
+
                 Text(description)
                     .font(.system(size: 14))
                     .foregroundColor(.secondary)
             }
-            
+
             Spacer()
         }
     }

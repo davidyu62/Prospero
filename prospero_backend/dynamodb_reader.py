@@ -20,7 +20,7 @@ def get_crypto_data_by_date(date: str) -> Optional[dict]:
     """
     TB_CRYPTO_DATA에서 특정 날짜 데이터 조회
     date: yyyyMMdd 형식
-    Returns: {btcPrice, longShortRatio, fearGreedIndex, openInterest, mvrv} 또는 None
+    Returns: {btcPrice, longShortRatio, fearGreedIndex, openInterest, mvrv, fundingRate, activeAddresses} 또는 None
     """
     crypto_table, _ = get_table_names()
     item = _query_latest_by_date(crypto_table, date)
@@ -33,7 +33,7 @@ def get_macro_data_by_date(date: str) -> Optional[dict]:
     """
     TB_MACRO_DATA에서 특정 날짜 데이터 조회
     date: yyyyMMdd 형식
-    Returns: {interestRate, treasury10y, cpi, m2, unemployment, dollarIndex} 또는 None
+    Returns: {interestRate, treasury10y, cpi, m2, unemployment, dollarIndex, vix, oilPrice, yieldSpread, breakEvenInflation} 또는 None
     """
     _, macro_table = get_table_names()
     item = _query_latest_by_date(macro_table, date)
@@ -114,6 +114,8 @@ def _item_to_crypto(item: dict) -> dict:
         "fearGreedIndex": _n_to_int(item.get("fearGreedIndex")),
         "openInterest": _n_to_float(item.get("openInterest")),
         "mvrv": _n_to_float(item.get("mvrv")),
+        "fundingRate": _n_to_float(item.get("fundingRate")),
+        "activeAddresses": _n_to_int(item.get("activeAddresses")),
     }
 
 
@@ -126,6 +128,10 @@ def _item_to_macro(item: dict) -> dict:
         "m2": _n_to_float(item.get("m2")),
         "unemployment": _n_to_float(item.get("unemployment")),
         "dollarIndex": _n_to_float(item.get("dollarIndex")),
+        "vix": _n_to_float(item.get("vix")),
+        "oilPrice": _n_to_float(item.get("oilPrice")),
+        "yieldSpread": _n_to_float(item.get("yieldSpread")),
+        "breakEvenInflation": _n_to_float(item.get("breakEvenInflation")),
     }
 
 
@@ -260,7 +266,7 @@ def get_crypto_data_7days(date: str) -> dict:
     """
     TB_CRYPTO_DATA에서 특정 날짜부터 과거 7일 데이터 조회
     date: yyyyMMdd 형식
-    Returns: {dates: [], btcPrices: [], fearGreedIndices: [], openInterests: [], mvrvs: []}
+    Returns: {dates: [], btcPrices: [], fearGreedIndices: [], openInterests: [], mvrvs: [], fundingRates: [], activeAddresses: []}
     """
     from datetime import datetime, timedelta
 
@@ -287,6 +293,8 @@ def get_crypto_data_7days(date: str) -> dict:
         "fearGreedIndices": [d["fearGreedIndex"] for d in data_list],
         "openInterests": [d["openInterest"] for d in data_list],
         "mvrvs": [d["mvrv"] for d in data_list],
+        "fundingRates": [d["fundingRate"] for d in data_list],
+        "activeAddresses": [d["activeAddresses"] for d in data_list],
     }
 
 
@@ -299,4 +307,6 @@ def _item_to_crypto_with_date(date: str, item: dict) -> dict:
         "fearGreedIndex": _n_to_int(item.get("fearGreedIndex")) or 0,
         "openInterest": _n_to_float(item.get("openInterest")) or 0,
         "mvrv": _n_to_float(item.get("mvrv")) or 0,
+        "fundingRate": _n_to_float(item.get("fundingRate")) or 0,
+        "activeAddresses": _n_to_int(item.get("activeAddresses")) or 0,
     }

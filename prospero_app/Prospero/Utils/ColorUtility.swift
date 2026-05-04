@@ -97,4 +97,54 @@ struct ColorUtility {
             return Color(red: 1.0, green: 0.30, blue: 0.30)   // 어두운 빨강
         }
     }
+
+    // MARK: - v3.0 신규 Macro Metric Colors
+
+    /// VIX 색상 (낮을수록 안정적)
+    static func colorForVix(_ value: Double) -> Color {
+        if value <= 15.0 {
+            return .successColor  // 낮음 = 좋음 (안정)
+        } else if value <= 20.0 {
+            return .warningColor  // 중간
+        } else {
+            return .dangerColor   // 높음 = 나쁨 (변동성)
+        }
+    }
+
+    /// WTI 원유 가격 색상 (60~80 USD/배럴이 이상적)
+    static func colorForOilPrice(_ value: Double) -> Color {
+        if value >= 60.0 && value <= 80.0 {
+            return .successColor  // 이상적
+        } else if value > 80.0 && value <= 100.0 {
+            return .warningColor  // 높음
+        } else if value < 60.0 && value >= 40.0 {
+            return .warningColor  // 낮음
+        } else {
+            return .dangerColor   // 극단적
+        }
+    }
+
+    /// 금리차 (T10Y2Y) 색상 (양수가 정상, 음수 = 역전 신호)
+    static func colorForYieldSpread(_ value: Double) -> Color {
+        if value >= 0.5 {
+            return .successColor  // 양의 스프레드 = 좋음
+        } else if value >= 0.0 {
+            return .warningColor  // 축소되는 중
+        } else {
+            return .dangerColor   // 역전 = 경기침체 신호
+        }
+    }
+
+    /// 기대인플레이션 (10Y BE) 색상 (2% 근처가 이상적)
+    static func colorForBreakEvenInflation(_ value: Double) -> Color {
+        if value >= 1.8 && value <= 2.3 {
+            return .successColor  // 이상적
+        } else if value > 2.3 && value <= 2.8 {
+            return .warningColor  // 약간 높음
+        } else if value >= 1.3 && value < 1.8 {
+            return .warningColor  // 약간 낮음
+        } else {
+            return .dangerColor   // 극단적
+        }
+    }
 }

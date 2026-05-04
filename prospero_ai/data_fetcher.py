@@ -273,6 +273,17 @@ class DataFetcher:
         mvrv_current = float(crypto_current_raw.get("mvrv", 1.0) or 1.0)
         mvrv_avg30d = round(sum(mvrv_values) / len(mvrv_values), 4) if mvrv_values else 1.0
 
+        # v3.0 신규: 활성 주소 30일 평균
+        active_addresses_values = [
+            float(v["activeAddresses"]) for v in crypto_data.values()
+            if v.get("activeAddresses") is not None
+        ]
+        active_addresses_current = float(crypto_current_raw.get("activeAddresses", 750000) or 750000)
+        active_addresses_avg30d = (
+            round(sum(active_addresses_values) / len(active_addresses_values), 0)
+            if active_addresses_values else 750000
+        )
+
         return {
             "crypto": {
                 "current": {
@@ -287,6 +298,9 @@ class DataFetcher:
                     "oi_change30d": oi_change30d,
                     "mvrv_current": mvrv_current,
                     "mvrv_avg30d": mvrv_avg30d,
+                    "funding_rate": float(crypto_current_raw.get("fundingRate", 0.0) or 0.0),  # NEW
+                    "active_addresses_current": int(active_addresses_current),  # NEW
+                    "active_addresses_avg30d": active_addresses_avg30d,  # NEW
                 },
                 "30d_ago": {
                     "btcPrice": btc_30d,
@@ -301,6 +315,10 @@ class DataFetcher:
                     "dxy_30d_ago": float(macro_30d_raw.get("dollarIndex", 100) or 100),
                     "unemployment_current": float(macro_current_raw.get("unemployment", 4.0) or 4.0),
                     "cpi": float(macro_current_raw.get("cpi", 2.5) or 2.5),
+                    "vix": float(macro_current_raw.get("vix", 20.0) or 20.0),  # NEW
+                    "oil_price": float(macro_current_raw.get("oilPrice", 70.0) or 70.0),  # NEW
+                    "yield_spread": float(macro_current_raw.get("yieldSpread", 0.5) or 0.5),  # NEW
+                    "break_even_inflation": float(macro_current_raw.get("breakEvenInflation", 2.3) or 2.3),  # NEW
                 },
                 "30d_ago": {
                     "interest_rate": float(macro_30d_raw.get("interestRate", 3.0) or 3.0),
@@ -320,8 +338,14 @@ class DataFetcher:
         macro_data = data.get("macro", {})
 
         # 핵심 필드 누락 시 경고만 출력하고 skip (분석은 계속 진행)
-        required_crypto_fields = ["btcPrice", "fearGreedIndex", "longShortRatio", "openInterest"]
-        required_macro_fields = ["interestRate", "treasury10y", "cpi", "m2", "unemployment", "dollarIndex"]
+        required_crypto_fields = [
+            "btcPrice", "fearGreedIndex", "longShortRatio", "openInterest",
+            "fundingRate", "activeAddresses"  # v3.0 신규
+        ]
+        required_macro_fields = [
+            "interestRate", "treasury10y", "cpi", "m2", "unemployment", "dollarIndex",
+            "vix", "oilPrice", "yieldSpread", "breakEvenInflation"  # v3.0 신규
+        ]
 
         for date, crypto_item in crypto_data.items():
             missing_fields = [f for f in required_crypto_fields if f not in crypto_item or crypto_item[f] is None]

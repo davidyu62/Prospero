@@ -10,12 +10,16 @@ from typing import Optional
 import requests
 
 FRED_SERIES = {
-    "interestRate": "FEDFUNDS",      # 미국 금리
-    "treasury10y": "DGS10",          # 10년물 국채 금리
-    "cpi": "CPIAUCSL",               # CPI
-    "m2": "M2SL",                    # M2 통화량
-    "unemployment": "UNRATE",        # 실업률
-    "dollarIndex": "DTWEXBGS",       # 달러 인덱스
+    "interestRate": "FEDFUNDS",              # 미국 금리
+    "treasury10y": "DGS10",                  # 10년물 국채 금리
+    "cpi": "CPIAUCSL",                       # CPI
+    "m2": "M2SL",                            # M2 통화량
+    "unemployment": "UNRATE",                # 실업률
+    "dollarIndex": "DTWEXBGS",               # 달러 인덱스
+    "vix": "VIXCLS",                         # VIX 지수
+    "oilPrice": "DCOILWTICO",                # WTI 유가
+    "yieldSpread": "T10Y2Y",                 # 10년-2년 금리 스프레드
+    "breakEvenInflation": "T10YIE",          # 10년 기대 인플레이션
 }
 
 
@@ -24,7 +28,7 @@ def get_macro_data(date: str, fred_api_key: str) -> Optional[dict]:
     매크로 데이터 조회
     date: yyyyMMdd 형식
     fred_api_key: FRED API 키
-    Returns: {interestRate, treasury10y, cpi, m2, unemployment, dollarIndex}
+    Returns: {interestRate, treasury10y, cpi, m2, unemployment, dollarIndex, vix, oilPrice, yieldSpread, breakEvenInflation}
     """
     if not fred_api_key:
         print("[WARN] FRED API 키가 없습니다.")
