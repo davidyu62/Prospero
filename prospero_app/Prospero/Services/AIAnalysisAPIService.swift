@@ -65,6 +65,11 @@ class AIAnalysisAPIService {
         return (analysis: aiAnalysis, crypto: cryptoData, macro: macroData)
     }
 
+    /// AI 분석만 조회(Crypto/Macro 원시데이터 미포함). AI 탭 날짜 셀렉터/미니바용 경량 조회.
+    func fetchAnalysisOnly(for date: String) async throws -> AIAnalysisResponse {
+        return try await fetchAIAnalysisOnly(for: date)
+    }
+
     // MARK: - 캐시 메서드
 
     private func loadCachedAnalysis(for date: String) -> AIAnalysisResponse? {

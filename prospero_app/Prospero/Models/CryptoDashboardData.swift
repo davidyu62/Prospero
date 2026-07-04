@@ -22,13 +22,17 @@ struct FearGreedData {
     let label: String // "Greed", "Fear", etc.
 }
 
-struct CryptoMetric {
+struct CryptoMetric: Identifiable {
     let title: String
     let subtitle: String
     let value: String
     let change: String? // optional change indicator
     let changeIsPositive: Bool?
     let barProgress: Double?  // 진행 바 진행률 (0.0~1.0), nil이면 표시 안 함
+    var rawValue: Double? = nil  // 값 연동 해석용 원시 수치 (nil이면 해석 표시 안 함)
+
+    // 상세 시트 `.sheet(item:)` 식별용. 5개 지표 타이틀은 서로 겹치지 않음.
+    var id: String { title }
 }
 
 struct CryptoDashboardData {
@@ -40,61 +44,15 @@ struct CryptoDashboardData {
     let fundingRate: CryptoMetric      // v3.0 신규
     let activeAddresses: CryptoMetric  // v3.0 신규
 
-    // ⚠️ 임시 샘플 데이터 - API 호출 실패 시에만 사용됩니다
-    static let sample = CryptoDashboardData(
-        bitcoin: BitcoinData(
-            price: 42350.67,
-            change24h: 2.58,
-            high24h: 42800.23,
-            low24h: 41350.91,
-            volume24h: 23.5,
-            dominance: 52.4,
-            updatedAt: "Updated Just now • Live"
-        ),
-        fearGreed: FearGreedData(
-            value: 72,
-            label: "Greed"
-        ),
-        openInterest: CryptoMetric(
-            title: "Open Interest",
-            subtitle: "Futures Market",
-            value: "4.5M BTC",
-            change: "▲ +6.7%",
-            changeIsPositive: true,
-            barProgress: 0.45
-        ),
-        longShortRatio: CryptoMetric(
-            title: "Long/Short Ratio",
-            subtitle: "Market Sentiment",
-            value: "1.23",
-            change: "▲ +2.1%",
-            changeIsPositive: true,
-            barProgress: 0.55
-        ),
-        mvrv: CryptoMetric(
-            title: "MVRV",
-            subtitle: "Market Value/Realized Value",
-            value: "1.45",
-            change: nil,
-            changeIsPositive: nil,
-            barProgress: 0.45
-        ),
-        fundingRate: CryptoMetric(
-            title: "Funding Rate",
-            subtitle: "Futures Market",
-            value: "-0.0150%",
-            change: "▼ -0.0035%",
-            changeIsPositive: false,
-            barProgress: 0.35
-        ),
-        activeAddresses: CryptoMetric(
-            title: "Active Addresses",
-            subtitle: "Network Activity",
-            value: "780,542",
-            change: "▲ +2.3%",
-            changeIsPositive: true,
-            barProgress: 0.65
-        )
+    // 로드 전 초기 자리표시자(중립 빈값). 스켈레톤에 가려 화면엔 안 보이며, 가짜 샘플 수치를 쓰지 않는다.
+    static let empty = CryptoDashboardData(
+        bitcoin: BitcoinData(price: 0, change24h: 0, high24h: 0, low24h: 0, volume24h: 0, dominance: 0, updatedAt: ""),
+        fearGreed: FearGreedData(value: 0, label: ""),
+        openInterest: CryptoMetric(title: "Open Interest", subtitle: "Futures Market", value: "—", change: nil, changeIsPositive: nil, barProgress: nil),
+        longShortRatio: CryptoMetric(title: "Long/Short Ratio", subtitle: "Market Sentiment", value: "—", change: nil, changeIsPositive: nil, barProgress: nil),
+        mvrv: CryptoMetric(title: "MVRV", subtitle: "Market Value/Realized Value", value: "—", change: nil, changeIsPositive: nil, barProgress: nil),
+        fundingRate: CryptoMetric(title: "Funding Rate", subtitle: "Futures Market", value: "—", change: nil, changeIsPositive: nil, barProgress: nil),
+        activeAddresses: CryptoMetric(title: "Active Addresses", subtitle: "Network Activity", value: "—", change: nil, changeIsPositive: nil, barProgress: nil)
     )
 }
 

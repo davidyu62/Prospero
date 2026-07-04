@@ -10,17 +10,15 @@ import UIKit
 
 struct CryptoDashboardView: View {
     @EnvironmentObject var theme: ThemeManager
-    @State private var dashboardData = CryptoDashboardData.sample
+    @State private var dashboardData = CryptoDashboardData.empty
     @State private var selectedTab: TabItem = .crypto
     @State private var isLoading = false
+    @State private var isDataLoaded = false               // 첫 실데이터 로드 완료 여부(로드 전 스켈레톤 표시)
     @State private var errorMessage: String?
-    @State private var showBitcoinInfo = false
-    @State private var showFearGreedInfo = false
-    @State private var showOpenInterestInfo = false
-    @State private var showLongShortRatioInfo = false
-    @State private var showMvrvInfo = false
-    @State private var showFundingRateInfo = false        // v3.0 신규
-    @State private var showActiveAddressesInfo = false   // v3.0 신규
+    @State private var selectedMetric: CryptoMetric?      // 모든 지표 카드 → 통합 상세 시트
+    @State private var histories: [String: [Double]] = [:] // 지표 key.rawValue → 30일 실데이터(없으면 스텁 폴백)
+    @State private var historyEndDate: Date? = nil          // 30일 히스토리 마지막 날짜(X축 날짜 표기용)
+    @State private var historyDates: [Date] = []            // 30일 실제 날짜(오래된→최신, X축용)
     @State private var updatedTime: String = ""
     @State private var showAdNotReadyAlert = false
     @AppStorage("selectedLanguage") private var selectedLanguage: String = "ENG"
@@ -29,7 +27,46 @@ struct CryptoDashboardView: View {
         Localization.shared.language = selectedLanguage
         return Localization.shared
     }
-    
+
+    // Bitcoin·공포탐욕 카드를 통합 상세 시트(MetricDetailSheet)에 태우기 위한 래퍼.
+    // 타이틀은 IndicatorInterpreter.key(forTitle:) 매핑과 일치해야 한다.
+    private var bitcoinMetric: CryptoMetric {
+        let b = dashboardData.bitcoin
+        let f = NumberFormatter()
+        f.numberStyle = .decimal
+        f.maximumFractionDigits = 2
+        f.minimumFractionDigits = 2
+        let priceStr = f.string(from: NSNumber(value: b.price)) ?? "\(b.price)"
+        return CryptoMetric(
+            title: "Bitcoin (BTC)",
+            subtitle: "Price",
+            value: "$\(priceStr)",
+            change: nil,
+            changeIsPositive: b.change24h >= 0,
+            barProgress: nil,
+            rawValue: b.price
+        )
+    }
+
+    private var fearGreedMetric: CryptoMetric {
+        let fg = dashboardData.fearGreed
+        return CryptoMetric(
+            title: "Fear & Greed Index",
+            subtitle: "Market Sentiment",
+            value: "\(fg.value)",
+            change: nil,
+            changeIsPositive: nil,
+            barProgress: nil,
+            rawValue: Double(fg.value)
+        )
+    }
+
+    // 지표 카드의 30일 실데이터 조회(없으면 nil → 카드가 스텁으로 폴백)
+    private func history(for metric: CryptoMetric) -> [Double]? {
+        guard let key = IndicatorInterpreter.key(forTitle: metric.title) else { return nil }
+        return histories[key.rawValue]
+    }
+
     var body: some View {
         ZStack {
             theme.appBackground
@@ -78,55 +115,54 @@ struct CryptoDashboardView: View {
                                     .frame(height: 0.5)
                                     .padding(.top, 12)
 
-                                // Bitcoin Card
-                                BitcoinCard(data: dashboardData.bitcoin, fearGreed: dashboardData.fearGreed, theme: theme)
-                                    .padding(.horizontal, 20)
-                                    .onTapGesture {
-                                        showBitcoinInfo = true
+                                if isDataLoaded {
+                                    // Bitcoin Card
+                                    BitcoinCard(data: dashboardData.bitcoin, fearGreed: dashboardData.fearGreed, history: histories["btcPrice"], theme: theme)
+                                        .padding(.horizontal, 20)
+                                        .onTapGesture {
+                                            selectedMetric = bitcoinMetric
+                                        }
+
+                                    // Fear & Greed Index Card
+                                    FearGreedCard(data: dashboardData.fearGreed, history: histories["fearGreed"], theme: theme)
+                                        .padding(.horizontal, 20)
+                                        .onTapGesture {
+                                            selectedMetric = fearGreedMetric
+                                        }
+
+                                    // Small Metric Cards
+                                    VStack(spacing: 12) {
+                                        MetricCard(metric: dashboardData.openInterest, history: history(for: dashboardData.openInterest), theme: theme)
+                                            .onTapGesture {
+                                                selectedMetric = dashboardData.openInterest
+                                            }
+                                        MetricCard(metric: dashboardData.longShortRatio, history: history(for: dashboardData.longShortRatio), theme: theme)
+                                            .onTapGesture {
+                                                selectedMetric = dashboardData.longShortRatio
+                                            }
+                                        MetricCard(metric: dashboardData.mvrv, history: history(for: dashboardData.mvrv), theme: theme)
+                                            .onTapGesture {
+                                                selectedMetric = dashboardData.mvrv
+                                            }
+                                        MetricCard(metric: dashboardData.fundingRate, history: history(for: dashboardData.fundingRate), theme: theme)
+                                            .onTapGesture {
+                                                selectedMetric = dashboardData.fundingRate
+                                            }
+                                        MetricCard(metric: dashboardData.activeAddresses, history: history(for: dashboardData.activeAddresses), theme: theme)
+                                            .onTapGesture {
+                                                selectedMetric = dashboardData.activeAddresses
+                                            }
                                     }
-                                
-                                // Fear & Greed Index Card
-                                FearGreedCard(data: dashboardData.fearGreed, theme: theme)
                                     .padding(.horizontal, 20)
-                                    .onTapGesture {
-                                        showFearGreedInfo = true
-                                    }
-                                
-                                // Small Metric Cards
-                                VStack(spacing: 12) {
-                                    MetricCard(metric: dashboardData.openInterest, theme: theme)
-                                        .onTapGesture {
-                                            showOpenInterestInfo = true
-                                        }
-                                    MetricCard(metric: dashboardData.longShortRatio, theme: theme)
-                                        .onTapGesture {
-                                            showLongShortRatioInfo = true
-                                        }
-                                    MetricCard(metric: dashboardData.mvrv, theme: theme)
-                                        .onTapGesture {
-                                            showMvrvInfo = true
-                                        }
-                                    MetricCard(metric: dashboardData.fundingRate, theme: theme)
-                                        .onTapGesture {
-                                            showFundingRateInfo = true
-                                        }
-                                    MetricCard(metric: dashboardData.activeAddresses, theme: theme)
-                                        .onTapGesture {
-                                            showActiveAddressesInfo = true
-                                        }
-                                }
-                                .padding(.horizontal, 20)
-                                .padding(.bottom, 120) // 콘텐츠 하단 여백 (배너 + 네비게이션 바)
-                                
-                                if isLoading {
-                                    ProgressView()
-                                        .padding()
-                                }
-                                
-                                if let error = errorMessage {
+                                    .padding(.bottom, 24) // 마지막 카드와 탭바 사이 최소 여백
+                                } else if let error = errorMessage {
                                     Text("Error: \(error)")
                                         .foregroundColor(.red)
                                         .padding()
+                                } else {
+                                    // 로드 전: 샘플 대신 고정 크기 스켈레톤(깜빡임·리사이즈 방지)
+                                    DashboardLoadingPlaceholder(theme: theme, cardHeights: [150, 132, 96, 96, 96, 96, 96])
+                                        .padding(.top, 8)
                                 }
                             }
                         }
@@ -144,12 +180,17 @@ struct CryptoDashboardView: View {
                 
                 // Bottom Tab Bar (화면 하단에 고정)
                 BottomTabBar(selectedTab: $selectedTab, theme: theme, onAITap: {
-                    // TODO: 광고 재활성화 예정
-                    // RewardedAdManager.shared.showAd(
-                    //     onReward: { selectedTab = .ai },
-                    //     onAdNotReady: { showAdNotReadyAlert = true }
-                    // )
-                    selectedTab = .ai
+                    // 광고 노출/전환 시간 동안 AI 데이터를 미리 로드해 진입 시 즉시 표시
+                    AIView.prefetchIntoCache()
+                    // 마지막 광고 노출 후 2시간이 지났으면 리워드 광고 표시, 아니면 바로 진입
+                    if RewardedAdManager.shared.shouldShowAd() {
+                        RewardedAdManager.shared.showAd(
+                            onFinish: { selectedTab = .ai },
+                            onAdNotReady: { selectedTab = .ai }
+                        )
+                    } else {
+                        selectedTab = .ai
+                    }
                 })
             }
         }
@@ -158,39 +199,21 @@ struct CryptoDashboardView: View {
             let timeFormatter = DateFormatter()
             timeFormatter.dateFormat = "HH:mm"
             updatedTime = timeFormatter.string(from: Date())
-            // 앱 시작 시 Crypto 탭이 기본 선택되므로 Crypto 데이터만 로드
-            if selectedTab == .crypto {
+            // 앱 시작 시 Crypto 탭이 기본 선택되므로 Crypto 데이터만 로드(세션 내 1회)
+            if selectedTab == .crypto && !isDataLoaded {
                 await loadCryptoData()
             }
         }
         .onChange(of: selectedTab) { newTab in
-            // 탭 변경 시 해당 탭의 데이터 로드
+            // 탭 재진입 시엔 이미 로드된 데이터를 그대로 유지(재로딩·값 변동 방지). 최초 1회만 로드.
             Task {
-                if newTab == .crypto {
+                if newTab == .crypto && !isDataLoaded {
                     await loadCryptoData()
                 }
             }
         }
-        .sheet(isPresented: $showBitcoinInfo) {
-            BitcoinInfoSheet()
-        }
-        .sheet(isPresented: $showFearGreedInfo) {
-            FearGreedInfoSheet()
-        }
-        .sheet(isPresented: $showOpenInterestInfo) {
-            OpenInterestInfoSheet()
-        }
-        .sheet(isPresented: $showLongShortRatioInfo) {
-            LongShortRatioInfoSheet()
-        }
-        .sheet(isPresented: $showMvrvInfo) {
-            MVRVInfoSheet()
-        }
-        .sheet(isPresented: $showFundingRateInfo) {
-            FundingRateInfoSheet()
-        }
-        .sheet(isPresented: $showActiveAddressesInfo) {
-            ActiveAddressesInfoSheet()
+        .sheet(item: $selectedMetric) { metric in
+            MetricDetailSheet(metric: metric, history: history(for: metric), endDate: historyEndDate, historyDates: historyDates.isEmpty ? nil : historyDates, theme: theme)
         }
         .alert(localization.common("Ad Not Ready"), isPresented: $showAdNotReadyAlert) {
             Button(localization.common("OK"), role: .cancel) {}
@@ -199,6 +222,38 @@ struct CryptoDashboardView: View {
         }
     }
     
+    // 30일 범위 데이터를 받아 지표 key별 배열로 저장한다. 실패하면 비워 카드가 스텁으로 폴백.
+    private func loadHistory(endDate: String) async {
+        // 실패(스텁 폴백) 시에도 X축 날짜가 나오도록 요청 종료일을 먼저 설정
+        let fmt0 = DateFormatter()
+        fmt0.dateFormat = "yyyyMMdd"
+        fmt0.timeZone = TimeZone(identifier: "UTC")
+        historyEndDate = fmt0.date(from: endDate)
+        do {
+            let r = try await CryptoAPIService.shared.fetchCryptoRange(date: endDate, days: 30)
+            var h: [String: [Double]] = [:]
+            func put(_ key: IndicatorInterpreter.Key, _ arr: [Double]) {
+                if arr.count >= 2 { h[key.rawValue] = arr }  // 최소 2점 이상만 사용
+            }
+            put(.btcPrice, r.btcPrices)
+            put(.fearGreed, r.fearGreedIndices)
+            put(.openInterest, r.openInterests)
+            put(.longShortRatio, r.longShortRatios)
+            put(.mvrv, r.mvrvs)
+            put(.fundingRate, r.fundingRates.map { $0 * 100 })  // 카드 rawValue와 동일한 퍼센트 단위
+            put(.activeAddresses, r.activeAddresses)
+            histories = h
+            // X축 날짜 표기용 실제 날짜 배열 + 종료일
+            historyDates = r.dates.compactMap { fmt0.date(from: $0) }
+            if let last = historyDates.last { historyEndDate = last }
+            print("✅ 30일 범위 데이터 로드 완료 - \(r.dates.count)일")
+        } catch {
+            print("⚠️ 30일 범위 데이터 로드 실패 → 스텁 폴백: \(error)")
+            histories = [:]
+            historyDates = []
+        }
+    }
+
     private func loadCryptoData() async {
         isLoading = true
         errorMessage = nil
@@ -287,7 +342,8 @@ struct CryptoDashboardView: View {
                         value: formatOpenInterest(openInterestValue),
                         change: formatChange(openInterestChange),
                         changeIsPositive: openInterestChange >= 0,
-                        barProgress: min(max(openInterestValue / 150000.0, 0.0), 1.0)
+                        barProgress: min(max(openInterestValue / 150000.0, 0.0), 1.0),
+                        rawValue: openInterestValue
                     ),
                     longShortRatio: CryptoMetric(
                         title: "Long/Short Ratio",
@@ -295,7 +351,8 @@ struct CryptoDashboardView: View {
                         value: String(format: "%.2f", longShortRatioValue),
                         change: formatChange(longShortRatioChange),
                         changeIsPositive: longShortRatioChange >= 0,
-                        barProgress: longShortRatioValue / (1.0 + longShortRatioValue)
+                        barProgress: longShortRatioValue / (1.0 + longShortRatioValue),
+                        rawValue: longShortRatioValue
                     ),
                     mvrv: CryptoMetric(
                         title: "MVRV",
@@ -303,7 +360,8 @@ struct CryptoDashboardView: View {
                         value: String(format: "%.4f", mvrvValue),
                         change: nil,
                         changeIsPositive: nil,
-                        barProgress: min(max((mvrvValue - 0.5) / 2.0, 0.0), 1.0)
+                        barProgress: min(max((mvrvValue - 0.5) / 2.0, 0.0), 1.0),
+                        rawValue: mvrvValue
                     ),
                     fundingRate: CryptoMetric(
                         title: "Funding Rate",
@@ -311,7 +369,8 @@ struct CryptoDashboardView: View {
                         value: String(format: "%.4f%%", fundingRateValue * 100),
                         change: fundingRateChange != 0 ? String(format: "%+.4f%%", fundingRateChange * 100) : nil,
                         changeIsPositive: fundingRateChange < 0,
-                        barProgress: nil
+                        barProgress: nil,
+                        rawValue: fundingRateValue * 100
                     ),
                     activeAddresses: CryptoMetric(
                         title: "Active Addresses",
@@ -319,10 +378,15 @@ struct CryptoDashboardView: View {
                         value: formatNumber(Int64(activeAddressesValue)),
                         change: formatChange(activeAddressesChange),
                         changeIsPositive: activeAddressesChange >= 0,
-                        barProgress: nil
+                        barProgress: nil,
+                        rawValue: Double(activeAddressesValue)
                     )
                 )
                 print("✅ 데이터 업데이트 완료 - \(displayDate)")
+                isDataLoaded = true   // 실데이터 표시 시작(스켈레톤 종료)
+
+                // 30일 추세 실데이터 로드(실패 시 스텁 폴백)
+                await loadHistory(endDate: displayDate)
             } else {
                 print("⚠️ requestDate·previousDate 모두 nil. 데이터 없음.")
                 updatedTime = ""
@@ -470,8 +534,15 @@ struct CryptoDashboardView: View {
 struct BitcoinCard: View {
     let data: BitcoinData
     let fearGreed: FearGreedData?
+    var history: [Double]? = nil   // 30일 가격 실데이터(없으면 스텁)
     @ObservedObject var theme: ThemeManager
     @AppStorage("selectedLanguage") private var selectedLanguage: String = "ENG"
+
+    // 실데이터 우선, 없으면 스텁
+    private var priceHistory: [Double] {
+        if let history, history.count >= 2 { return history }
+        return CryptoHistoryProvider.history(for: .btcPrice, current: data.price, days: 30)
+    }
 
     private var localization: Localization {
         Localization.shared.language = selectedLanguage
@@ -517,6 +588,10 @@ struct BitcoinCard: View {
                             .foregroundColor(ColorUtility.colorForCryptoChange(data.change24h))
                     }
                 }
+
+                // 30일 가격 추세 스파크라인 (실데이터 우선, 없으면 스텁)
+                TrendChartView(values: priceHistory, mode: .spark)
+                    .padding(.top, 4)
 
                 // 공포탐욕 지수 미니 배지
                 if let fearGreed = fearGreed {
@@ -634,8 +709,15 @@ struct MetricRow: View {
 // MARK: - Fear & Greed Card
 struct FearGreedCard: View {
     let data: FearGreedData
+    var history: [Double]? = nil   // 30일 지수 실데이터(없으면 스텁)
     @ObservedObject var theme: ThemeManager
     @AppStorage("selectedLanguage") private var selectedLanguage: String = "ENG"
+
+    // 실데이터 우선, 없으면 스텁
+    private var indexHistory: [Double] {
+        if let history, history.count >= 2 { return history }
+        return CryptoHistoryProvider.history(for: .fearGreed, current: Double(data.value), days: 30)
+    }
     
     private var localization: Localization {
         Localization.shared.language = selectedLanguage
@@ -721,6 +803,22 @@ struct FearGreedCard: View {
                         .multilineTextAlignment(.center)
                 }
             }
+
+            // 30일 추세 스파크라인 (실데이터 우선, 없으면 스텁)
+            TrendChartView(values: indexHistory, mode: .spark)
+
+            // 값 연동 1줄 해석
+            let interp = IndicatorInterpreter.interpret(.fearGreed, value: Double(data.value), trend: .flat, language: selectedLanguage)
+            HStack(spacing: 6) {
+                Text(interp.sentiment.symbol)
+                    .font(.system(size: 12, weight: .bold))
+                Text(interp.text)
+                    .font(.system(size: 11.5, weight: .medium))
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+            }
+            .foregroundColor(interp.sentiment.color)
+            .padding(.top, 2)
         }
         .padding(20)
         .background(
@@ -761,6 +859,7 @@ struct FearGreedCard: View {
 // MARK: - Metric Card
 struct MetricCard: View {
     let metric: CryptoMetric
+    var history: [Double]? = nil   // 30일 실데이터(없으면 스텁)
     @ObservedObject var theme: ThemeManager
     @AppStorage("selectedLanguage") private var selectedLanguage: String = "ENG"
     
@@ -828,8 +927,10 @@ struct MetricCard: View {
                 }
             }
 
-            // 진행 바
-            if let barProgress = metric.barProgress {
+            // 30일 추세 스파크라인 (매핑된 지표) — 없으면 기존 진행 바
+            if let spark = sparkline {
+                TrendChartView(values: spark, mode: .spark)
+            } else if let barProgress = metric.barProgress {
                 GeometryReader { geometry in
                     ZStack(alignment: .leading) {
                         // 배경 바
@@ -843,6 +944,25 @@ struct MetricCard: View {
                     }
                 }
                 .frame(height: 3)
+            }
+
+            // 값 연동 1줄 해석 (오늘 값/방향의 의미)
+            if let interp = interpretation {
+                VStack(spacing: 8) {
+                    Rectangle()
+                        .fill(Color.white.opacity(0.06))
+                        .frame(height: 0.5)
+
+                    HStack(spacing: 6) {
+                        Text(interp.sentiment.symbol)
+                            .font(.system(size: 12, weight: .bold))
+                        Text(interp.text)
+                            .font(.system(size: 11.5, weight: .medium))
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 0)
+                    }
+                    .foregroundColor(interp.sentiment.color)
+                }
             }
         }
         .padding(16)
@@ -860,6 +980,24 @@ struct MetricCard: View {
             x: 0,
             y: 4
         )
+    }
+
+    // 값 연동 해석 (rawValue + 전일 대비 추세 기반). 매핑 없는 지표는 nil → 표시 안 함.
+    private var interpretation: IndicatorInterpretation? {
+        guard let key = IndicatorInterpreter.key(forTitle: metric.title),
+              let raw = metric.rawValue else { return nil }
+        let trend: TrendDirection = metric.changeIsPositive == nil
+            ? .flat
+            : (metric.changeIsPositive! ? .up : .down)
+        return IndicatorInterpreter.interpret(key, value: raw, trend: trend, language: selectedLanguage)
+    }
+
+    // 30일 추세 스파크라인 데이터. 실데이터(history) 우선, 없으면 스텁 폴백.
+    private var sparkline: [Double]? {
+        guard let key = IndicatorInterpreter.key(forTitle: metric.title),
+              let raw = metric.rawValue else { return nil }
+        if let history, history.count >= 2 { return history }
+        return CryptoHistoryProvider.history(for: key, current: raw, days: 30)
     }
 
     private func colorForChangeValue(_ changeString: String, isPositive: Bool) -> Color {
@@ -1010,188 +1148,6 @@ struct BottomTabBar: View {
     }
 }
 
-// MARK: - Bitcoin Info Sheet
-struct BitcoinInfoSheet: View {
-    @Environment(\.dismiss) var dismiss
-    @AppStorage("selectedLanguage") private var selectedLanguage: String = "ENG"
-    
-    private var localization: Localization {
-        Localization.shared.language = selectedLanguage
-        return Localization.shared
-    }
-    
-    var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    // Header Icon
-                    HStack {
-                        Spacer()
-                        Circle()
-                            .fill(Color.orange.opacity(0.2))
-                            .frame(width: 80, height: 80)
-                            .overlay(
-                                Text("₿")
-                                    .font(.system(size: 50, weight: .bold))
-                                    .foregroundColor(.orange)
-                            )
-                        Spacer()
-                    }
-                    .padding(.top, 20)
-                    
-                    // Title
-                    Text(localization.cryptoMetric("Bitcoin (BTC)"))
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundColor(.primary)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity)
-                    
-                    // Description
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text(localization.infoSheet("What is Bitcoin?"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-                        
-                        Text(localization.infoSheet("Bitcoin is a decentralized digital currency that enables peer-to-peer transactions without the need for a central authority or intermediary. It was created in 2009 by an anonymous person or group using the pseudonym Satoshi Nakamoto."))
-                            .font(.system(size: 16))
-                            .foregroundColor(.secondary)
-                            .lineSpacing(4)
-                        
-                        Text(localization.infoSheet("Key Features"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .padding(.top, 8)
-                        
-                        VStack(alignment: .leading, spacing: 12) {
-                            InfoRow(icon: "lock.shield.fill", title: localization.infoSheet("Decentralized"), description: localization.infoSheet("No central authority controls Bitcoin"))
-                            InfoRow(icon: "network", title: localization.infoSheet("Peer-to-Peer"), description: localization.infoSheet("Direct transactions between users"))
-                            InfoRow(icon: "eye.slash.fill", title: localization.infoSheet("Pseudonymous"), description: localization.infoSheet("Transactions are linked to addresses, not identities"))
-                            InfoRow(icon: "infinity", title: localization.infoSheet("Limited Supply"), description: localization.infoSheet("Maximum of 21 million BTC will ever exist"))
-                        }
-                        
-                        Text(localization.infoSheet("How It Works"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .padding(.top, 8)
-                        
-                        Text(localization.infoSheet("Bitcoin uses blockchain technology, a distributed ledger that records all transactions. Miners validate transactions and add them to blocks, which are then added to the blockchain. This process ensures security and prevents double-spending."))
-                            .font(.system(size: 16))
-                            .foregroundColor(.secondary)
-                            .lineSpacing(4)
-                    }
-                    .padding(.horizontal, 20)
-                }
-                .padding(.bottom, 40)
-            }
-            .background(Color(.systemBackground))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(localization.common("Done")) {
-                        dismiss()
-                    }
-                    .foregroundColor(.blue)
-                }
-            }
-        }
-    }
-}
-
-// MARK: - Fear & Greed Info Sheet
-struct FearGreedInfoSheet: View {
-    @Environment(\.dismiss) var dismiss
-    @AppStorage("selectedLanguage") private var selectedLanguage: String = "ENG"
-    
-    private var localization: Localization {
-        Localization.shared.language = selectedLanguage
-        return Localization.shared
-    }
-    
-    var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    // Header Icon
-                    HStack {
-                        Spacer()
-                        ZStack {
-                            Circle()
-                                .fill(
-                                    LinearGradient(
-                                        colors: [.red, .orange, .yellow, .green],
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
-                                )
-                                .frame(width: 80, height: 80)
-                            
-                            Image(systemName: "brain.head.profile")
-                                .font(.system(size: 40, weight: .bold))
-                                .foregroundColor(.white)
-                        }
-                        Spacer()
-                    }
-                    .padding(.top, 20)
-                    
-                    // Title
-                    Text(localization.cryptoMetric("Fear & Greed Index"))
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundColor(.primary)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity)
-                    
-                    // Description
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text(localization.infoSheet("What is the Fear & Greed Index?"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-                        
-                        Text(localization.infoSheet("The Fear & Greed Index measures the emotions and sentiments of cryptocurrency investors. It ranges from 0 (Extreme Fear) to 100 (Extreme Greed) and helps identify when the market might be overbought or oversold."))
-                            .font(.system(size: 16))
-                            .foregroundColor(.secondary)
-                            .lineSpacing(4)
-                        
-                        Text(localization.infoSheet("Index Levels"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .padding(.top, 8)
-                        
-                        VStack(alignment: .leading, spacing: 12) {
-                            InfoRow(icon: "exclamationmark.triangle.fill", title: localization.infoSheet("0-24: Extreme Fear"), description: localization.infoSheet("Investors are very worried, potential buying opportunity"))
-                            InfoRow(icon: "exclamationmark.circle.fill", title: localization.infoSheet("25-44: Fear"), description: localization.infoSheet("Market sentiment is negative"))
-                            InfoRow(icon: "minus.circle.fill", title: localization.infoSheet("45-55: Neutral"), description: localization.infoSheet("Balanced market sentiment"))
-                            InfoRow(icon: "checkmark.circle.fill", title: localization.infoSheet("56-75: Greed"), description: localization.infoSheet("Investors are optimistic"))
-                            InfoRow(icon: "flame.fill", title: localization.infoSheet("76-100: Extreme Greed"), description: localization.infoSheet("Market may be overbought, potential correction"))
-                        }
-                        
-                        Text(localization.infoSheet("How It Works"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .padding(.top, 8)
-                        
-                        Text(localization.infoSheet("The index combines multiple data sources including volatility, market momentum, social media sentiment, surveys, and Bitcoin dominance. When the index shows extreme fear, it might indicate a buying opportunity, while extreme greed could signal a potential market top."))
-                            .font(.system(size: 16))
-                            .foregroundColor(.secondary)
-                            .lineSpacing(4)
-                    }
-                    .padding(.horizontal, 20)
-                }
-                .padding(.bottom, 40)
-            }
-            .background(Color(.systemBackground))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(localization.common("Done")) {
-                        dismiss()
-                    }
-                    .foregroundColor(.blue)
-                }
-            }
-        }
-    }
-}
-
 // MARK: - New Addresses Info Sheet
 struct NewAddressesInfoSheet: View {
     @Environment(\.dismiss) var dismiss
@@ -1256,437 +1212,6 @@ struct NewAddressesInfoSheet: View {
                             .padding(.top, 8)
                         
                         Text(localization.infoSheet("When someone receives Bitcoin for the first time, a new address is created. Tracking these addresses helps measure the expansion of the Bitcoin network and can indicate growing interest in cryptocurrency. A rising number of new addresses typically suggests increased adoption and network growth."))
-                            .font(.system(size: 16))
-                            .foregroundColor(.secondary)
-                            .lineSpacing(4)
-                    }
-                    .padding(.horizontal, 20)
-                }
-                .padding(.bottom, 40)
-            }
-            .background(Color(.systemBackground))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(localization.common("Done")) {
-                        dismiss()
-                    }
-                    .foregroundColor(.blue)
-                }
-            }
-        }
-    }
-}
-
-// MARK: - Open Interest Info Sheet
-struct OpenInterestInfoSheet: View {
-    @Environment(\.dismiss) var dismiss
-    @AppStorage("selectedLanguage") private var selectedLanguage: String = "ENG"
-    
-    private var localization: Localization {
-        Localization.shared.language = selectedLanguage
-        return Localization.shared
-    }
-    
-    var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    // Header Icon
-                    HStack {
-                        Spacer()
-                        Circle()
-                            .fill(Color.purple.opacity(0.2))
-                            .frame(width: 80, height: 80)
-                            .overlay(
-                                Image(systemName: "chart.line.uptrend.xyaxis")
-                                    .font(.system(size: 40, weight: .bold))
-                                    .foregroundColor(.purple)
-                            )
-                        Spacer()
-                    }
-                    .padding(.top, 20)
-                    
-                    // Title
-                    Text(localization.cryptoMetric("Open Interest"))
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundColor(.primary)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity)
-                    
-                    // Description
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text(localization.infoSheet("What is Open Interest?"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-                        
-                        Text(localization.infoSheet("Open Interest is the total number of outstanding derivative contracts (futures and options) that have not been settled. It's measured in BTC and represents the total value of active positions in the futures market."))
-                            .font(.system(size: 16))
-                            .foregroundColor(.secondary)
-                            .lineSpacing(4)
-                        
-                        Text(localization.infoSheet("Key Points"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .padding(.top, 8)
-                        
-                        VStack(alignment: .leading, spacing: 12) {
-                            InfoRow(icon: "chart.bar.fill", title: localization.infoSheet("Market Activity"), description: localization.infoSheet("Shows total active positions in futures"))
-                            InfoRow(icon: "waveform.path", title: localization.infoSheet("Liquidity Indicator"), description: localization.infoSheet("Higher OI suggests more market liquidity"))
-                            InfoRow(icon: "exclamationmark.triangle.fill", title: localization.infoSheet("Price Volatility"), description: localization.infoSheet("Rapid changes can indicate market stress"))
-                        }
-                        
-                        Text(localization.infoSheet("How It Works"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .padding(.top, 8)
-                        
-                        Text(localization.infoSheet("Open Interest increases when new contracts are opened and decreases when contracts are closed or settled. It's a key metric for understanding market sentiment and potential price volatility in the derivatives market. High open interest can indicate strong market participation, while sudden decreases might signal position unwinding."))
-                            .font(.system(size: 16))
-                            .foregroundColor(.secondary)
-                            .lineSpacing(4)
-                    }
-                    .padding(.horizontal, 20)
-                }
-                .padding(.bottom, 40)
-            }
-            .background(Color(.systemBackground))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(localization.common("Done")) {
-                        dismiss()
-                    }
-                    .foregroundColor(.blue)
-                }
-            }
-        }
-    }
-}
-
-// MARK: - Long/Short Ratio Info Sheet
-struct LongShortRatioInfoSheet: View {
-    @Environment(\.dismiss) var dismiss
-    @AppStorage("selectedLanguage") private var selectedLanguage: String = "ENG"
-    
-    private var localization: Localization {
-        Localization.shared.language = selectedLanguage
-        return Localization.shared
-    }
-    
-    var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    // Header Icon
-                    HStack {
-                        Spacer()
-                        Circle()
-                            .fill(Color.green.opacity(0.2))
-                            .frame(width: 80, height: 80)
-                            .overlay(
-                                Image(systemName: "arrow.left.arrow.right")
-                                    .font(.system(size: 40, weight: .bold))
-                                    .foregroundColor(.green)
-                            )
-                        Spacer()
-                    }
-                    .padding(.top, 20)
-                    
-                    // Title
-                    Text(localization.cryptoMetric("Long/Short Ratio"))
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundColor(.primary)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity)
-                    
-                    // Description
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text(localization.infoSheet("What is Long/Short Ratio?"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-                        
-                        Text(localization.infoSheet("Long/Short Ratio measures the proportion of traders holding long positions (betting on price increase) versus short positions (betting on price decrease) in the futures market."))
-                            .font(.system(size: 16))
-                            .foregroundColor(.secondary)
-                            .lineSpacing(4)
-                        
-                        Text(localization.infoSheet("Key Points"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .padding(.top, 8)
-                        
-                        VStack(alignment: .leading, spacing: 12) {
-                            InfoRow(icon: "chart.bar.fill", title: localization.infoSheet("Market Sentiment"), description: localization.infoSheet("Shows trader expectations"))
-                            InfoRow(icon: "arrow.up.circle.fill", title: localization.infoSheet("Ratio > 1.0"), description: localization.infoSheet("More longs than shorts (bullish)"))
-                            InfoRow(icon: "arrow.down.circle.fill", title: localization.infoSheet("Ratio < 1.0"), description: localization.infoSheet("More shorts than longs (bearish)"))
-                        }
-                        
-                        Text(localization.infoSheet("How It Works"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .padding(.top, 8)
-                        
-                        Text(localization.infoSheet("A ratio above 1.0 means more traders are betting on price increases (long positions) than decreases (short positions). This metric helps gauge market sentiment and can sometimes indicate potential price movements, though it's not a guarantee. Extreme ratios (very high or very low) can sometimes signal contrarian opportunities."))
-                            .font(.system(size: 16))
-                            .foregroundColor(.secondary)
-                            .lineSpacing(4)
-                    }
-                    .padding(.horizontal, 20)
-                }
-                .padding(.bottom, 40)
-            }
-            .background(Color(.systemBackground))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(localization.common("Done")) {
-                        dismiss()
-                    }
-                    .foregroundColor(.blue)
-                }
-            }
-        }
-    }
-}
-
-// MARK: - MVRV Info Sheet
-struct MVRVInfoSheet: View {
-    @Environment(\.dismiss) var dismiss
-    @AppStorage("selectedLanguage") private var selectedLanguage: String = "ENG"
-
-    private var localization: Localization {
-        Localization.shared.language = selectedLanguage
-        return Localization.shared
-    }
-
-    var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    // Header Icon
-                    HStack {
-                        Spacer()
-                        Circle()
-                            .fill(Color.blue.opacity(0.2))
-                            .frame(width: 80, height: 80)
-                            .overlay(
-                                Image(systemName: "chart.pie.fill")
-                                    .font(.system(size: 40, weight: .bold))
-                                    .foregroundColor(.blue)
-                            )
-                        Spacer()
-                    }
-                    .padding(.top, 20)
-
-                    // Title
-                    Text("MVRV")
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundColor(.primary)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity)
-
-                    // Description
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text(localization.infoSheet("What is MVRV?"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-
-                        Text(localization.infoSheet("MVRV (Market Value to Realized Value) is a ratio that compares the current market value of Bitcoin to its realized value. Market value is the current market cap (price × supply), while realized value represents the average price at which all bitcoins were last moved on-chain."))
-                            .font(.system(size: 16))
-                            .foregroundColor(.secondary)
-                            .lineSpacing(4)
-
-                        Text(localization.infoSheet("Key Points"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .padding(.top, 8)
-
-                        VStack(alignment: .leading, spacing: 12) {
-                            InfoRow(icon: "arrow.up.arrow.down", title: localization.infoSheet("MVRV > 1.0"), description: localization.infoSheet("Market cap above average cost basis (profit)"))
-                            InfoRow(icon: "arrow.down.arrow.up", title: localization.infoSheet("MVRV < 1.0"), description: localization.infoSheet("Market cap below average cost basis (loss)"))
-                            InfoRow(icon: "flame.fill", title: localization.infoSheet("Market Top Indicator"), description: localization.infoSheet("Extreme MVRV readings can indicate overheated markets"))
-                            InfoRow(icon: "star.fill", title: localization.infoSheet("Value Accumulation"), description: localization.infoSheet("Low MVRV suggests long-term holders at a loss"))
-                        }
-
-                        Text(localization.infoSheet("How It Works"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .padding(.top, 8)
-
-                        Text(localization.infoSheet("MVRV is calculated by dividing the current market cap by the realized cap. When MVRV is high (above 3-4), the market may be overheated with investors holding significant profits, which historically has preceded market corrections. Conversely, when MVRV is low (below 1), it suggests that most holders are underwater, potentially indicating a market bottom or buying opportunity. MVRV helps identify periods when long-term investors are most likely to take profits or when capitulation is occurring."))
-                            .font(.system(size: 16))
-                            .foregroundColor(.secondary)
-                            .lineSpacing(4)
-                    }
-                    .padding(.horizontal, 20)
-                }
-                .padding(.bottom, 40)
-            }
-            .background(Color(.systemBackground))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(localization.common("Done")) {
-                        dismiss()
-                    }
-                    .foregroundColor(.blue)
-                }
-            }
-        }
-    }
-}
-
-// MARK: - Funding Rate Info Sheet
-struct FundingRateInfoSheet: View {
-    @Environment(\.dismiss) var dismiss
-    @AppStorage("selectedLanguage") private var selectedLanguage: String = "ENG"
-
-    private var localization: Localization {
-        Localization.shared.language = selectedLanguage
-        return Localization.shared
-    }
-
-    var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    // Header Icon
-                    HStack {
-                        Spacer()
-                        Circle()
-                            .fill(Color.cyan.opacity(0.2))
-                            .frame(width: 80, height: 80)
-                            .overlay(
-                                Image(systemName: "waveform.path")
-                                    .font(.system(size: 40, weight: .bold))
-                                    .foregroundColor(.cyan)
-                            )
-                        Spacer()
-                    }
-                    .padding(.top, 20)
-
-                    // Title
-                    Text(localization.cryptoMetric("Funding Rate"))
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundColor(.primary)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity)
-
-                    // Description
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text(localization.infoSheet("What is Funding Rate?"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-
-                        Text(localization.infoSheet("Funding Rate is the periodic interest that traders with leveraged positions pay to each other in the futures market. It keeps perpetual futures prices aligned with spot prices and reflects the market's sentiment about future price direction."))
-                            .font(.system(size: 16))
-                            .foregroundColor(.secondary)
-                            .lineSpacing(4)
-
-                        Text(localization.infoSheet("Key Points"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .padding(.top, 8)
-
-                        VStack(alignment: .leading, spacing: 12) {
-                            InfoRow(icon: "arrow.up.circle.fill", title: localization.infoSheet("Positive Rate"), description: localization.infoSheet("Longs pay shorts (market bullish), contrarian signal"))
-                            InfoRow(icon: "arrow.down.circle.fill", title: localization.infoSheet("Negative Rate"), description: localization.infoSheet("Shorts pay longs (market bearish), potential bounce"))
-                            InfoRow(icon: "exclamationmark.triangle.fill", title: localization.infoSheet("Extreme Rates"), description: localization.infoSheet("Very high rates indicate overlevered positions"))
-                        }
-
-                        Text(localization.infoSheet("How It Works"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .padding(.top, 8)
-
-                        Text(localization.infoSheet("Traders pay funding rates every 8 hours on Binance. When rates are positive and high, long traders pay a lot to maintain positions, creating a contrarian signal that shorts are being squeezed out. When rates are negative, short traders pay longs, suggesting oversold conditions. Monitoring funding rates helps traders identify potential reversals and extreme market conditions."))
-                            .font(.system(size: 16))
-                            .foregroundColor(.secondary)
-                            .lineSpacing(4)
-                    }
-                    .padding(.horizontal, 20)
-                }
-                .padding(.bottom, 40)
-            }
-            .background(Color(.systemBackground))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(localization.common("Done")) {
-                        dismiss()
-                    }
-                    .foregroundColor(.blue)
-                }
-            }
-        }
-    }
-}
-
-// MARK: - Active Addresses Info Sheet
-struct ActiveAddressesInfoSheet: View {
-    @Environment(\.dismiss) var dismiss
-    @AppStorage("selectedLanguage") private var selectedLanguage: String = "ENG"
-
-    private var localization: Localization {
-        Localization.shared.language = selectedLanguage
-        return Localization.shared
-    }
-
-    var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    // Header Icon
-                    HStack {
-                        Spacer()
-                        Circle()
-                            .fill(Color.indigo.opacity(0.2))
-                            .frame(width: 80, height: 80)
-                            .overlay(
-                                Image(systemName: "network")
-                                    .font(.system(size: 40, weight: .bold))
-                                    .foregroundColor(.indigo)
-                            )
-                        Spacer()
-                    }
-                    .padding(.top, 20)
-
-                    // Title
-                    Text(localization.cryptoMetric("Active Addresses"))
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundColor(.primary)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity)
-
-                    // Description
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text(localization.infoSheet("What are Active Addresses?"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-
-                        Text(localization.infoSheet("Active Addresses measures the number of unique Bitcoin addresses that had some activity (sending or receiving BTC) in the last 24 hours. It's a key indicator of Bitcoin network adoption and usage intensity."))
-                            .font(.system(size: 16))
-                            .foregroundColor(.secondary)
-                            .lineSpacing(4)
-
-                        Text(localization.infoSheet("Key Points"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .padding(.top, 8)
-
-                        VStack(alignment: .leading, spacing: 12) {
-                            InfoRow(icon: "arrow.up.circle.fill", title: localization.infoSheet("Rising Addresses"), description: localization.infoSheet("Increasing network adoption and activity"))
-                            InfoRow(icon: "arrow.down.circle.fill", title: localization.infoSheet("Falling Addresses"), description: localization.infoSheet("Decreasing network usage, potential weakness"))
-                            InfoRow(icon: "network", title: localization.infoSheet("Network Health"), description: localization.infoSheet("Reflects actual Bitcoin transaction volume"))
-                        }
-
-                        Text(localization.infoSheet("How It Works"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .padding(.top, 8)
-
-                        Text(localization.infoSheet("Each address represents a unique wallet or participant on the network. Rising active addresses suggest growing network adoption and user engagement. When compared to the 30-day average, surges in active addresses can indicate capitulation (panic selling) or renewed interest. This metric is useful for confirming market movements - price increases with rising addresses suggest genuine growth, while price increases with falling addresses may be driven by speculation rather than real adoption."))
                             .font(.system(size: 16))
                             .foregroundColor(.secondary)
                             .lineSpacing(4)

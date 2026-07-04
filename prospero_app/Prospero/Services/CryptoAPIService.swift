@@ -70,6 +70,29 @@ class CryptoAPIService {
             throw error
         }
     }
+
+    /// 30일(기본) 범위 데이터 조회. 실패 시 호출부에서 스텁으로 폴백한다.
+    /// - Parameters:
+    ///   - date: 종료일(yyyyMMdd). 이 날짜 포함 과거 days일.
+    ///   - days: 조회 일수 (기본 30)
+    func fetchCryptoRange(date: String, days: Int = 30) async throws -> CryptoRangeResponse {
+        let urlString = "\(baseURL)/api/crypto-data/db/range?date=\(date)&days=\(days)"
+        print("🌐 범위 API URL: \(urlString)")
+
+        guard let url = URL(string: urlString) else {
+            throw APIError.invalidURL
+        }
+
+        let (data, response) = try await URLSession.shared.data(from: url)
+
+        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+            let code = (response as? HTTPURLResponse)?.statusCode ?? -1
+            print("❌ 범위 API 실패: HTTP \(code)")
+            throw APIError.invalidResponse
+        }
+
+        return try JSONDecoder().decode(CryptoRangeResponse.self, from: data)
+    }
 }
 
 enum APIError: Error {

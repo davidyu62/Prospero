@@ -262,27 +262,43 @@ def _item_to_ai_analysis(item: dict) -> dict:
     }
 
 
-def get_crypto_data_7days(date: str) -> dict:
+def get_crypto_data_range(date: str, days: int = 30) -> dict:
     """
-    TB_CRYPTO_DATA에서 특정 날짜부터 과거 7일 데이터 조회
-    date: yyyyMMdd 형식
-    Returns: {dates: [], btcPrices: [], fearGreedIndices: [], openInterests: [], mvrvs: [], fundingRates: [], activeAddresses: []}
+    TB_CRYPTO_DATA에서 특정 날짜(포함)부터 과거 days일 데이터 조회
+    date: yyyyMMdd 형식, days: 조회 일수(기본 30)
+    Returns: {dates: [], btcPrices: [], longShortRatios: [], fearGreedIndices: [], openInterests: [], mvrvs: [], fundingRates: [], activeAddresses: []}
+             (오래된 날짜부터 정렬, 데이터가 있는 날짜만 포함)
+
+    성능: date가 파티션 키이므로 날짜별 단일 Query로 조회한다.
+    - boto3 클라이언트를 1회만 생성(반복 생성 오버헤드 제거)
+    - 데이터 없는 날짜는 Scan 폴백 없이 건너뜀 → days=30도 기본 타임아웃 내 처리
     """
     from datetime import datetime, timedelta
 
     crypto_table, _ = get_table_names()
+    client = boto3.client("dynamodb")
 
-    # 7일 데이터 조회
     data_list = []
     current_date = datetime.strptime(date, "%Y%m%d")
 
-    for i in range(7):
+    for i in range(days):
         target_date = (current_date - timedelta(days=i)).strftime("%Y%m%d")
-        item = _query_latest_by_date(crypto_table, target_date)
-        if item:
-            data_list.append(_item_to_crypto_with_date(target_date, item))
+        try:
+            resp = client.query(
+                TableName=crypto_table,
+                KeyConditionExpression="#date = :date",
+                ExpressionAttributeNames={"#date": "date"},
+                ExpressionAttributeValues={":date": {"S": target_date}},
+                ScanIndexForward=False,  # timestamps 내림차순 → 최신 1건
+                Limit=1,
+            )
+            items = resp.get("Items", [])
+            if items:
+                data_list.append(_item_to_crypto_with_date(target_date, items[0]))
+        except Exception as e:
+            print(f"[WARN] range Query 실패 date={target_date}: {e}")
 
-    # 날짜 역순 정렬 (오래된 것부터)
+    # 날짜 오름차순 정렬 (오래된 것부터)
     data_list.sort(key=lambda x: x["date"])
 
     # 각 지표별로 리스트로 변환
@@ -295,6 +311,142 @@ def get_crypto_data_7days(date: str) -> dict:
         "mvrvs": [d["mvrv"] for d in data_list],
         "fundingRates": [d["fundingRate"] for d in data_list],
         "activeAddresses": [d["activeAddresses"] for d in data_list],
+    }
+
+
+def get_crypto_data_7days(date: str) -> dict:
+    """하위 호환용: 7일 범위 조회 (get_crypto_data_range 위임)"""
+    return get_crypto_data_range(date, 7)
+
+
+def get_macro_data_range(date: str, days: int = 30) -> dict:
+    """
+    TB_MACRO_DATA에서 특정 날짜(포함)부터 과거 days일 데이터 조회.
+    crypto와 동일하게 date가 파티션 키이므로 날짜별 단일 Query(클라이언트 1회 생성).
+    Returns: {dates, interestRates, treasury10ys, cpis, m2s, unemployments, dollarIndices, vixs, oilPrices, yieldSpreads, breakEvenInflations}
+             (오래된 날짜부터 정렬, 데이터 있는 날짜만 포함)
+    """
+    from datetime import datetime, timedelta
+
+    _, macro_table = get_table_names()
+    client = boto3.client("dynamodb")
+
+    data_list = []
+    current_date = datetime.strptime(date, "%Y%m%d")
+
+    for i in range(days):
+        target_date = (current_date - timedelta(days=i)).strftime("%Y%m%d")
+        try:
+            resp = client.query(
+                TableName=macro_table,
+                KeyConditionExpression="#date = :date",
+                ExpressionAttributeNames={"#date": "date"},
+                ExpressionAttributeValues={":date": {"S": target_date}},
+                ScanIndexForward=False,
+                Limit=1,
+            )
+            items = resp.get("Items", [])
+            if items:
+                data_list.append(_item_to_macro_with_date(target_date, items[0]))
+        except Exception as e:
+            print(f"[WARN] macro range Query 실패 date={target_date}: {e}")
+
+    data_list.sort(key=lambda x: x["date"])
+
+    return {
+        "dates": [d["date"] for d in data_list],
+        "interestRates": [d["interestRate"] for d in data_list],
+        "treasury10ys": [d["treasury10y"] for d in data_list],
+        "cpis": [d["cpi"] for d in data_list],
+        "m2s": [d["m2"] for d in data_list],
+        "unemployments": [d["unemployment"] for d in data_list],
+        "dollarIndices": [d["dollarIndex"] for d in data_list],
+        "vixs": [d["vix"] for d in data_list],
+        "oilPrices": [d["oilPrice"] for d in data_list],
+        "yieldSpreads": [d["yieldSpread"] for d in data_list],
+        "breakEvenInflations": [d["breakEvenInflation"] for d in data_list],
+    }
+
+
+def get_macro_data_monthly(date: str, months: int = 6) -> dict:
+    """
+    TB_MACRO_DATA에서 최근 months개월의 '각 달 1일' 데이터만 조회.
+    예: date=20260703, months=6 → 2/1, 3/1, 4/1, 5/1, 6/1, 7/1 (6개 지점).
+    매크로 지표는 월 단위로 갱신되므로 월별 1일 6개만 조회해 Query 수를 크게 줄인다.
+    1일 데이터가 없으면 같은 달 2~3일로 폴백.
+    Returns: get_macro_data_range와 동일한 dict 형태(오래된 날짜부터 정렬).
+    """
+    from datetime import datetime
+
+    _, macro_table = get_table_names()
+    client = boto3.client("dynamodb")
+
+    end = datetime.strptime(date, "%Y%m%d")
+    year, month = end.year, end.month
+
+    # 최근 months개월의 (연, 월) 목록 — 오래된 달부터
+    targets = []
+    for k in range(months):
+        m = month - k
+        y = year
+        while m <= 0:
+            m += 12
+            y -= 1
+        targets.append((y, m))
+    targets.reverse()
+
+    data_list = []
+    for (y, m) in targets:
+        # 해당 달 1일 우선, 없으면 2~3일 폴백
+        for d in (1, 2, 3):
+            target_date = f"{y:04d}{m:02d}{d:02d}"
+            try:
+                resp = client.query(
+                    TableName=macro_table,
+                    KeyConditionExpression="#date = :date",
+                    ExpressionAttributeNames={"#date": "date"},
+                    ExpressionAttributeValues={":date": {"S": target_date}},
+                    ScanIndexForward=False,
+                    Limit=1,
+                )
+                items = resp.get("Items", [])
+                if items:
+                    data_list.append(_item_to_macro_with_date(target_date, items[0]))
+                    break
+            except Exception as e:
+                print(f"[WARN] macro monthly Query 실패 date={target_date}: {e}")
+
+    data_list.sort(key=lambda x: x["date"])
+
+    return {
+        "dates": [d["date"] for d in data_list],
+        "interestRates": [d["interestRate"] for d in data_list],
+        "treasury10ys": [d["treasury10y"] for d in data_list],
+        "cpis": [d["cpi"] for d in data_list],
+        "m2s": [d["m2"] for d in data_list],
+        "unemployments": [d["unemployment"] for d in data_list],
+        "dollarIndices": [d["dollarIndex"] for d in data_list],
+        "vixs": [d["vix"] for d in data_list],
+        "oilPrices": [d["oilPrice"] for d in data_list],
+        "yieldSpreads": [d["yieldSpread"] for d in data_list],
+        "breakEvenInflations": [d["breakEvenInflation"] for d in data_list],
+    }
+
+
+def _item_to_macro_with_date(date: str, item: dict) -> dict:
+    """DynamoDB 아이템을 MacroData dict로 변환 (date 포함, 누락값 0)"""
+    return {
+        "date": date,
+        "interestRate": _n_to_float(item.get("interestRate")) or 0,
+        "treasury10y": _n_to_float(item.get("treasury10y")) or 0,
+        "cpi": _n_to_float(item.get("cpi")) or 0,
+        "m2": _n_to_float(item.get("m2")) or 0,
+        "unemployment": _n_to_float(item.get("unemployment")) or 0,
+        "dollarIndex": _n_to_float(item.get("dollarIndex")) or 0,
+        "vix": _n_to_float(item.get("vix")) or 0,
+        "oilPrice": _n_to_float(item.get("oilPrice")) or 0,
+        "yieldSpread": _n_to_float(item.get("yieldSpread")) or 0,
+        "breakEvenInflation": _n_to_float(item.get("breakEvenInflation")) or 0,
     }
 
 

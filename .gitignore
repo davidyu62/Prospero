@@ -28,3 +28,9 @@ venv/
 
 #
 push.sh
+
+# Claude Code 로컬 설정
+.claude/
+
+# Vim 스왑 파일
+*.swp

@@ -11,6 +11,9 @@ from dynamodb_reader import (
     get_macro_data_by_date,
     get_ai_analysis_by_date,
     get_crypto_data_7days,
+    get_crypto_data_range,
+    get_macro_data_range,
+    get_macro_data_monthly,
 )
 
 
@@ -42,6 +45,8 @@ def lambda_handler(event, context):
         print(f"[DEBUG] path={path}, date={date}, httpMethod={http_method}")
 
         # 경로별 분기
+        if "/api/crypto-data/db/range" in path:
+            return _handle_crypto_range(date, params.get("days"))
         if "/api/crypto-data/7days" in path:
             return _handle_crypto_7days(date)
         if "/api/crypto-data/today" in path:
@@ -50,6 +55,8 @@ def lambda_handler(event, context):
             return _handle_crypto_date_with_previous(date)
         if "/api/crypto-data/db/date" in path:
             return _handle_crypto_by_date(date)
+        if "/api/macro-data/db/range" in path:
+            return _handle_macro_range(date, params.get("days"), params.get("months"))
         if "/api/macro-data/today" in path:
             return _handle_macro_today()
         if "/api/macro-data/db/date-with-previous" in path:
@@ -195,6 +202,54 @@ def _handle_crypto_7days(date: str):
         return _response(404, {"error": "해당 날짜의 암호화폐 데이터가 없습니다."})
 
     return _response(200, data_7days)
+
+
+def _handle_crypto_range(date: str, days_param):
+    """암호화폐 데이터 범위(기본 30일) 조회. date(종료일) 기준 과거 days일."""
+    if not date or len(date) != 8:
+        return _response(400, {"error": "날짜 형식이 올바르지 않습니다. yyyyMMdd 형식으로 입력해주세요."})
+
+    try:
+        days = int(days_param) if days_param else 30
+    except (ValueError, TypeError):
+        days = 30
+    days = max(2, min(days, 90))  # 2~90일로 제한
+
+    data_range = get_crypto_data_range(date, days)
+
+    if not data_range or not data_range["dates"]:
+        return _response(404, {"error": "해당 기간의 암호화폐 데이터가 없습니다."})
+
+    return _response(200, data_range)
+
+
+def _handle_macro_range(date: str, days_param, months_param=None):
+    """거시경제 데이터 범위 조회. date(종료일) 기준.
+    - months 지정 시: 최근 months개월의 '각 달 1일' 데이터만(월 단위 그래프용, Query 수 최소).
+    - 아니면: 과거 days일(기본 30일) 일 단위 조회.
+    """
+    if not date or len(date) != 8:
+        return _response(400, {"error": "날짜 형식이 올바르지 않습니다. yyyyMMdd 형식으로 입력해주세요."})
+
+    if months_param:
+        try:
+            months = int(months_param)
+        except (ValueError, TypeError):
+            months = 6
+        months = max(2, min(months, 12))  # 2~12개월로 제한
+        data_range = get_macro_data_monthly(date, months)
+    else:
+        try:
+            days = int(days_param) if days_param else 30
+        except (ValueError, TypeError):
+            days = 30
+        days = max(2, min(days, 90))  # 2~90일로 제한
+        data_range = get_macro_data_range(date, days)
+
+    if not data_range or not data_range["dates"]:
+        return _response(404, {"error": "해당 기간의 거시경제 데이터가 없습니다."})
+
+    return _response(200, data_range)
 
 
 def _macro_to_item(date: str, data: dict | None) -> dict | None:

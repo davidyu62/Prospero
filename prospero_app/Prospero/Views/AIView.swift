@@ -6,13 +6,28 @@
 
 import SwiftUI
 
+/// AI 탭도 탭 전환 시 뷰가 재생성되므로, 마지막 조회 결과를 세션 캐시에 보관해
+/// 재진입 시 스피너 없이 즉시 복원한다(Macro 탭과 동일한 패턴).
+enum AIDashboardCache {
+    static var analysisByDate: [String: AIAnalysisResponse] = [:]
+    static var scoreByDate: [String: Double] = [:]
+    static var availableDates: [String] = []
+    static var selectedDate: String = ""
+}
+
 struct AIView: View {
     @EnvironmentObject var theme: ThemeManager
     @AppStorage("selectedLanguage") private var selectedLanguage: String = "ENG"
 
-    @State private var analysis: AIAnalysisResponse?
-    @State private var isLoading = true
+    @State private var analysis: AIAnalysisResponse? = AIDashboardCache.analysisByDate[AIDashboardCache.selectedDate]
+    @State private var isLoading = AIDashboardCache.analysisByDate[AIDashboardCache.selectedDate] == nil  // 캐시 있으면 스피너 없이 시작
     @State private var errorMessage: String?
+
+    // AI 탭 최근 7일 조회 (세션 캐시에서 복원)
+    @State private var selectedDate: String = AIDashboardCache.selectedDate          // 선택된 날짜 (yyyyMMdd)
+    @State private var availableDates: [String] = AIDashboardCache.availableDates    // 최근 7일 (오래된→최신)
+    @State private var analysisCache: [String: AIAnalysisResponse] = AIDashboardCache.analysisByDate  // 날짜별 세션 캐시
+    @State private var scoreByDate: [String: Double] = AIDashboardCache.scoreByDate  // 7일 점수 미니바용
 
     private var localization: Localization {
         Localization.shared.language = selectedLanguage
@@ -43,6 +58,19 @@ struct AIView: View {
                     Rectangle()
                         .fill(Color.white.opacity(0.08))
                         .frame(height: 0.5)
+
+                    // 최근 7일 날짜 셀렉터
+                    if !availableDates.isEmpty {
+                        AIDateSelectorView(
+                            dates: availableDates,
+                            selectedDate: selectedDate,
+                            onSelect: { date in
+                                guard date != selectedDate else { return }
+                                Task { await loadData(for: date) }
+                            }
+                        )
+                        .padding(.top, 12)
+                    }
 
                     // Content
                     if isLoading {
@@ -76,6 +104,17 @@ struct AIView: View {
                         .padding(.vertical, 60)
                     } else if let analysis = analysis {
                         VStack(spacing: 20) {
+                            // 7일 점수 추이 미니바
+                            AIScoreTrendCard(
+                                dates: availableDates,
+                                scoreByDate: scoreByDate,
+                                selectedDate: selectedDate,
+                                onSelect: { date in
+                                    guard date != selectedDate else { return }
+                                    Task { await loadData(for: date) }
+                                }
+                            )
+
                             // 메인 점수 카드 (총점 및 신호)
                             AIMainScoreCard(analysis: analysis)
 
@@ -84,55 +123,333 @@ struct AIView: View {
 
                             // 연결 해석 분석 (v5.0)
                             AICrossIndicatorAnalysisCard(analysis: analysis)
-
-                            Spacer()
-                                .frame(height: 20)
                         }
                         .padding(.horizontal, 16)
                         .padding(.top, 20)
                     }
                 }
-                .padding(.bottom, 120)
+                .padding(.bottom, 24) // 마지막 카드와 탭바 사이 최소 여백
             }
         }
         .task {
-            await loadData()
+            // 날짜 목록(캐시 없을 때만 계산)
+            if availableDates.isEmpty {
+                availableDates = Self.recentDates(count: 7)
+                AIDashboardCache.availableDates = availableDates
+            }
+            // 선택 날짜 분석이 아직 없으면 로드(최초 진입 또는 캐시 미스). 캐시 복원 시엔 스킵→즉시 표시.
+            if analysis == nil {
+                let target = selectedDate.isEmpty ? (availableDates.last ?? "") : selectedDate
+                await loadData(for: target)
+            }
+            // 7일 점수 미니바 — 항상 호출(내부에서 캐시에 없는 날짜만 조회, 완비 시 no-op).
+            // 클릭 없이 진입 즉시 7일 전체 점수가 채워지도록.
+            await preloadTrendScores()
         }
     }
 
-    private func loadData() async {
+    /// 선택 날짜의 AI 분석 로드(세션 캐시 우선). 광고는 탭 진입 시에만 노출되므로 날짜 전환엔 광고 없음.
+    private func loadData(for date: String) async {
+        selectedDate = date
+        AIDashboardCache.selectedDate = date
+
+        // 세션 캐시 히트 → 네트워크 없이 즉시 표시
+        if let cached = analysisCache[date] {
+            analysis = cached
+            errorMessage = nil
+            isLoading = false
+            return
+        }
+
         isLoading = true
         errorMessage = nil
+        analysis = nil
 
-        // 수집기는 매일 UTC 04:00에 실행되어 그날(UTC 기준) 데이터를 DynamoDB에 저장함.
-        // AI 분석은 UTC 04:05에 완료되므로, UTC 04:05 전이면 당일 데이터가 아직 없음.
+        do {
+            let result = try await AIAnalysisAPIService.shared.fetchAnalysisOnly(for: date)
+            analysisCache[date] = result
+            scoreByDate[date] = result.totalScore
+            AIDashboardCache.analysisByDate[date] = result   // 재진입 복원용
+            AIDashboardCache.scoreByDate[date] = result.totalScore
+            // 응답 도착 시점에도 여전히 이 날짜가 선택돼 있을 때만 반영(빠른 연속 전환 대비)
+            if selectedDate == date {
+                analysis = result
+                isLoading = false
+            }
+        } catch {
+            if selectedDate == date {
+                errorMessage = localization.ai("No analysis available")
+                isLoading = false
+            }
+        }
+    }
+
+    /// 7일 점수 미니바를 위해 나머지 날짜 점수를 병렬 선로드(실패 날짜는 미니바에서 빈 막대).
+    /// 응답이 도착할 때마다 @State를 갱신하면 막대가 하나씩 툭툭 나타나(버퍼 걸린 느낌) 므로,
+    /// 루프에서는 로컬에만 모으고 그룹 완료 후 한 번에 반영해 막대가 동시에 채워지도록 한다.
+    private func preloadTrendScores() async {
+        var loaded: [String: AIAnalysisResponse] = [:]
+        await withTaskGroup(of: (String, AIAnalysisResponse?).self) { group in
+            for date in availableDates where analysisCache[date] == nil {
+                group.addTask {
+                    let result = try? await AIAnalysisAPIService.shared.fetchAnalysisOnly(for: date)
+                    return (date, result)
+                }
+            }
+            // 루프에서는 수집만 — @State 갱신 없음(리렌더 미발생)
+            for await (date, result) in group {
+                if let result = result { loaded[date] = result }
+            }
+        }
+        guard !loaded.isEmpty else { return }
+
+        // 정적 세션 캐시는 리렌더와 무관 → 개별 반영 무방(재진입 복원용)
+        for (date, result) in loaded {
+            AIDashboardCache.analysisByDate[date] = result
+            AIDashboardCache.scoreByDate[date] = result.totalScore
+        }
+        // @State는 그룹 완료 후 한 번에 → 단일 리렌더로 막대 동시 표시
+        analysisCache.merge(loaded) { _, new in new }
+        var scores = scoreByDate
+        for (date, result) in loaded { scores[date] = result.totalScore }
+        scoreByDate = scores
+    }
+
+    /// AI 데이터를 미리 세션 캐시에 적재한다(광고 노출 중 호출).
+    /// AIView 진입 시 캐시에서 즉시 복원되어 추가 로딩 없이 바로 표시된다.
+    @MainActor
+    static func prefetchIntoCache() {
+        Task { @MainActor in
+            let dates = recentDates(count: 7)
+            if AIDashboardCache.availableDates.isEmpty {
+                AIDashboardCache.availableDates = dates
+            }
+            guard let latest = dates.last else { return }
+            if AIDashboardCache.selectedDate.isEmpty {
+                AIDashboardCache.selectedDate = latest   // 기본 선택 = 최신 가용일
+            }
+            // 7일 전체를 병렬로 미리 조회(이미 캐시에 있는 날짜는 스킵)
+            await withTaskGroup(of: (String, AIAnalysisResponse?).self) { group in
+                for d in dates where AIDashboardCache.analysisByDate[d] == nil {
+                    group.addTask {
+                        (d, try? await AIAnalysisAPIService.shared.fetchAnalysisOnly(for: d))
+                    }
+                }
+                for await (d, result) in group {
+                    if let result = result {
+                        AIDashboardCache.analysisByDate[d] = result
+                        AIDashboardCache.scoreByDate[d] = result.totalScore
+                    }
+                }
+            }
+        }
+    }
+
+    /// 최근 N일(오래된→최신). 수집기 UTC 04:00 실행 + 분석 UTC 04:05 완료를 반영해 최신 가용일 계산.
+    static func recentDates(count: Int) -> [String] {
         let utc = TimeZone(identifier: "UTC")!
-        var utcCalendar = Calendar(identifier: .gregorian)
-        utcCalendar.timeZone = utc
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = utc
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyyMMdd"
         formatter.timeZone = utc
 
         let now = Date()
-        let utcHour = utcCalendar.component(.hour, from: now)
-        let utcMinute = utcCalendar.component(.minute, from: now)
-
-        // AI 분석 완료(UTC 04:05) 전이면 전날 요청
-        let analysisDate: String
-        if utcHour < 4 || (utcHour == 4 && utcMinute < 5) {
-            let yesterday = utcCalendar.date(byAdding: .day, value: -1, to: now)!
-            analysisDate = formatter.string(from: yesterday)
+        let hour = cal.component(.hour, from: now)
+        let minute = cal.component(.minute, from: now)
+        // AI 분석 완료(UTC 04:05) 전이면 전날이 최신 가용일
+        let latest: Date
+        if hour < 4 || (hour == 4 && minute < 5) {
+            latest = cal.date(byAdding: .day, value: -1, to: now) ?? now
         } else {
-            analysisDate = formatter.string(from: now)
+            latest = now
         }
 
-        do {
-            let result = try await AIAnalysisAPIService.shared.fetchAIAnalysis(for: analysisDate)
-            self.analysis = result.analysis
-            isLoading = false
-        } catch {
-            self.errorMessage = localization.ai("Unable to load data.")
-            isLoading = false
+        return (0..<count)
+            .compactMap { cal.date(byAdding: .day, value: -$0, to: latest) }
+            .map { formatter.string(from: $0) }
+            .reversed()
+    }
+}
+
+// MARK: - 날짜 표시 유틸
+enum AIDateFormat {
+    /// yyyyMMdd → Date (UTC 기준)
+    static func date(from yyyymmdd: String) -> Date? {
+        let f = DateFormatter()
+        f.dateFormat = "yyyyMMdd"
+        f.timeZone = TimeZone(identifier: "UTC")
+        return f.date(from: yyyymmdd)
+    }
+
+    /// 월/일 (예: "6/30")
+    static func monthDay(_ yyyymmdd: String) -> String {
+        guard let d = date(from: yyyymmdd) else { return yyyymmdd }
+        let f = DateFormatter()
+        f.dateFormat = "M/d"
+        f.timeZone = TimeZone(identifier: "UTC")
+        return f.string(from: d)
+    }
+
+    /// 요일 약어 (언어별)
+    static func weekday(_ yyyymmdd: String, language: String) -> String {
+        guard let d = date(from: yyyymmdd) else { return "" }
+        let f = DateFormatter()
+        f.timeZone = TimeZone(identifier: "UTC")
+        f.locale = Locale(identifier: language == "KOR" ? "ko_KR" : "en_US")
+        f.dateFormat = language == "KOR" ? "EEE" : "EEE"
+        return f.string(from: d)
+    }
+}
+
+// MARK: - 최근 7일 날짜 셀렉터
+struct AIDateSelectorView: View {
+    @EnvironmentObject var theme: ThemeManager
+    @AppStorage("selectedLanguage") private var selectedLanguage: String = "ENG"
+
+    let dates: [String]            // 오래된→최신
+    let selectedDate: String
+    let onSelect: (String) -> Void
+
+    private var localization: Localization {
+        Localization.shared.language = selectedLanguage
+        return Localization.shared
+    }
+
+    var body: some View {
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(dates, id: \.self) { date in
+                        let isSelected = date == selectedDate
+                        let isLatest = date == dates.last
+
+                        Button {
+                            onSelect(date)
+                        } label: {
+                            VStack(spacing: 2) {
+                                Text(isLatest ? localization.ai("Today") : AIDateFormat.weekday(date, language: selectedLanguage))
+                                    .font(.system(size: 10, weight: .medium))
+                                    .foregroundColor(isSelected ? .white : theme.secondaryText)
+
+                                Text(AIDateFormat.monthDay(date))
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundColor(isSelected ? .white : theme.primaryText)
+                            }
+                            .frame(minWidth: 48)
+                            .padding(.vertical, 8)
+                            .padding(.horizontal, 10)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(isSelected ? Color(red: 1.0, green: 0.65, blue: 0.0) : theme.cardIconBackground)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .stroke(isSelected ? Color.clear : theme.cardBorderColor, lineWidth: 1)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .id(date)
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 4)
+            }
+            .onAppear {
+                // 최신(선택)일이 보이도록 우측 끝으로 스크롤
+                proxy.scrollTo(selectedDate, anchor: .trailing)
+            }
+            .onChange(of: selectedDate) { newValue in
+                withAnimation { proxy.scrollTo(newValue, anchor: .center) }
+            }
+        }
+    }
+}
+
+// MARK: - 7일 점수 추이 미니바
+struct AIScoreTrendCard: View {
+    @EnvironmentObject var theme: ThemeManager
+    @AppStorage("selectedLanguage") private var selectedLanguage: String = "ENG"
+
+    let dates: [String]            // 오래된→최신
+    let scoreByDate: [String: Double]
+    let selectedDate: String
+    let onSelect: (String) -> Void
+
+    private var localization: Localization {
+        Localization.shared.language = selectedLanguage
+        return Localization.shared
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text(localization.ai("7-Day Score Trend"))
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(theme.secondaryText)
+
+            HStack(alignment: .bottom, spacing: 8) {
+                ForEach(dates, id: \.self) { date in
+                    let score = scoreByDate[date]
+                    let isSelected = date == selectedDate
+
+                    Button {
+                        onSelect(date)
+                    } label: {
+                        VStack(spacing: 6) {
+                            // 점수 라벨
+                            Text(score != nil ? String(format: "%.0f", score!) : "-")
+                                .font(.system(size: 10, weight: isSelected ? .bold : .medium))
+                                .foregroundColor(score != nil ? (isSelected ? theme.primaryText : theme.secondaryText) : theme.secondaryText.opacity(0.5))
+
+                            // 막대 (높이 ∝ 점수/100, 최대 80pt)
+                            ZStack(alignment: .bottom) {
+                                RoundedRectangle(cornerRadius: 4)
+                                    .fill(theme.cardIconBackground)
+                                    .frame(height: 80)
+
+                                if let score = score {
+                                    RoundedRectangle(cornerRadius: 4)
+                                        .fill(barColor(for: score).opacity(isSelected ? 1.0 : 0.55))
+                                        .frame(height: max(6, 80 * CGFloat(score / 100.0)))
+                                }
+                            }
+                            .frame(height: 80)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 4)
+                                    .stroke(isSelected ? Color(red: 1.0, green: 0.65, blue: 0.0) : Color.clear, lineWidth: 1.5)
+                            )
+
+                            // 날짜 라벨
+                            Text(AIDateFormat.monthDay(date))
+                                .font(.system(size: 9, weight: isSelected ? .semibold : .regular))
+                                .foregroundColor(isSelected ? theme.primaryText : theme.secondaryText)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .frame(maxWidth: .infinity)
+                }
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: theme.cardCornerRadius)
+                .fill(theme.cardBackground)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: theme.cardCornerRadius)
+                .stroke(theme.cardBorderColor, lineWidth: 1)
+        )
+        .shadow(color: theme.cardShadow, radius: 12, x: 0, y: 4)
+    }
+
+    // 점수 구간별 신호 색상 (범례와 동일)
+    private func barColor(for score: Double) -> Color {
+        switch score {
+        case 75...100: return Color(red: 0.0, green: 0.8, blue: 0.2)   // 강력매수
+        case 58..<75:  return Color(red: 0.2, green: 0.8, blue: 0.4)   // 매수
+        case 38..<58:  return Color(red: 1.0, green: 0.8, blue: 0.0)   // 보유
+        case 22..<38:  return Color(red: 1.0, green: 0.6, blue: 0.0)   // 부분매도
+        default:       return Color(red: 1.0, green: 0.2, blue: 0.2)   // 강력매도
         }
     }
 }

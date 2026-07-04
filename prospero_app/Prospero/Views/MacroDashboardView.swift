@@ -8,22 +8,27 @@
 import SwiftUI
 import UIKit
 
+/// Macro 탭은 탭 전환 시 뷰가 재생성되므로, 마지막 실데이터를 세션 캐시에 보관해
+/// 재진입 시 샘플/스켈레톤 없이 즉시 복원한다(백그라운드에서 조용히 갱신).
+enum MacroDashboardCache {
+    static var data: MacroDashboardData?
+    static var histories: [String: [Double]] = [:]
+    static var historyDates: [Date] = []
+    static var historyEndDate: Date?
+    static var updatedTime: String = ""
+}
+
 struct MacroDashboardView: View {
     @EnvironmentObject var theme: ThemeManager
-    @State private var dashboardData = MacroDashboardData.sample
+    @State private var dashboardData = MacroDashboardCache.data ?? .empty
+    @State private var isDataLoaded = MacroDashboardCache.data != nil   // 캐시 있으면 즉시 표시
     @State private var isLoading = false
     @State private var errorMessage: String?
-    @State private var showInterestRateInfo = false
-    @State private var showTreasury10yInfo = false
-    @State private var showCPIInfo = false
-    @State private var showM2Info = false
-    @State private var showUnemploymentInfo = false
-    @State private var showDollarIndexInfo = false
-    @State private var showVixInfo = false              // v3.0 신규
-    @State private var showOilPriceInfo = false        // v3.0 신규
-    @State private var showYieldSpreadInfo = false     // v3.0 신규
-    @State private var showBreakEvenInflationInfo = false // v3.0 신규
-    @State private var updatedTime: String = ""
+    @State private var selectedMacroMetric: MacroMetric?   // 모든 지표 카드 → 통합 상세 시트
+    @State private var histories: [String: [Double]] = MacroDashboardCache.histories // 지표 key.rawValue → 실데이터(없으면 스텁 폴백)
+    @State private var historyEndDate: Date? = MacroDashboardCache.historyEndDate     // 히스토리 마지막 날짜(X축 날짜 표기용)
+    @State private var historyDates: [Date] = MacroDashboardCache.historyDates        // 6개월 월별 실제 날짜(오래된→최신)
+    @State private var updatedTime: String = MacroDashboardCache.updatedTime
     @AppStorage("selectedLanguage") private var selectedLanguage: String = "ENG"
     
     private var localization: Localization {
@@ -74,102 +79,96 @@ struct MacroDashboardView: View {
                         .padding(.top, 12)
 
                     // Macro Metric Cards
-                    VStack(spacing: 12) {
-                        MacroMetricCard(metric: dashboardData.interestRate, valueColor: colorForInterestRate(dashboardData.interestRate.value), theme: theme)
-                            .onTapGesture {
-                                showInterestRateInfo = true
-                            }
-                        MacroMetricCard(metric: dashboardData.treasury10y, valueColor: colorForTreasury(dashboardData.treasury10y.value), theme: theme)
-                            .onTapGesture {
-                                showTreasury10yInfo = true
-                            }
-                        MacroMetricCard(metric: dashboardData.cpi, valueColor: colorForCPI(dashboardData.cpi.value), theme: theme)
-                            .onTapGesture {
-                                showCPIInfo = true
-                            }
-                        MacroMetricCard(metric: dashboardData.m2, valueColor: colorForM2(dashboardData.m2.value), theme: theme)
-                            .onTapGesture {
-                                showM2Info = true
-                            }
-                        MacroMetricCard(metric: dashboardData.unemployment, valueColor: colorForUnemployment(dashboardData.unemployment.value), theme: theme)
-                            .onTapGesture {
-                                showUnemploymentInfo = true
-                            }
-                        MacroMetricCard(metric: dashboardData.dollarIndex, valueColor: colorForDollarIndex(dashboardData.dollarIndex.value), theme: theme)
-                            .onTapGesture {
-                                showDollarIndexInfo = true
-                            }
-                        MacroMetricCard(metric: dashboardData.vix, valueColor: colorForVix(dashboardData.vix.value), theme: theme)
-                            .onTapGesture {
-                                showVixInfo = true
-                            }
-                        MacroMetricCard(metric: dashboardData.oilPrice, valueColor: colorForOilPrice(dashboardData.oilPrice.value), theme: theme)
-                            .onTapGesture {
-                                showOilPriceInfo = true
-                            }
-                        MacroMetricCard(metric: dashboardData.yieldSpread, valueColor: colorForYieldSpread(dashboardData.yieldSpread.value), theme: theme)
-                            .onTapGesture {
-                                showYieldSpreadInfo = true
-                            }
-                        MacroMetricCard(metric: dashboardData.breakEvenInflation, valueColor: colorForBreakEvenInflation(dashboardData.breakEvenInflation.value), theme: theme)
-                            .onTapGesture {
-                                showBreakEvenInflationInfo = true
-                            }
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 120) // 배너 + 네비게이션 바
-                    
-                    if isLoading {
-                        ProgressView()
-                            .padding()
-                    }
-                    
-                    if let error = errorMessage {
+                    if isDataLoaded {
+                        VStack(spacing: 12) {
+                            MacroMetricCard(metric: dashboardData.interestRate, valueColor: colorForInterestRate(dashboardData.interestRate.value), history: history(for: dashboardData.interestRate), theme: theme)
+                                .onTapGesture { selectedMacroMetric = dashboardData.interestRate }
+                            MacroMetricCard(metric: dashboardData.treasury10y, valueColor: colorForTreasury(dashboardData.treasury10y.value), history: history(for: dashboardData.treasury10y), theme: theme)
+                                .onTapGesture { selectedMacroMetric = dashboardData.treasury10y }
+                            MacroMetricCard(metric: dashboardData.cpi, valueColor: colorForCPI(dashboardData.cpi.value), history: history(for: dashboardData.cpi), theme: theme)
+                                .onTapGesture { selectedMacroMetric = dashboardData.cpi }
+                            MacroMetricCard(metric: dashboardData.m2, valueColor: colorForM2(dashboardData.m2.value), history: history(for: dashboardData.m2), theme: theme)
+                                .onTapGesture { selectedMacroMetric = dashboardData.m2 }
+                            MacroMetricCard(metric: dashboardData.unemployment, valueColor: colorForUnemployment(dashboardData.unemployment.value), history: history(for: dashboardData.unemployment), theme: theme)
+                                .onTapGesture { selectedMacroMetric = dashboardData.unemployment }
+                            MacroMetricCard(metric: dashboardData.dollarIndex, valueColor: colorForDollarIndex(dashboardData.dollarIndex.value), history: history(for: dashboardData.dollarIndex), theme: theme)
+                                .onTapGesture { selectedMacroMetric = dashboardData.dollarIndex }
+                            MacroMetricCard(metric: dashboardData.vix, valueColor: colorForVix(dashboardData.vix.value), history: history(for: dashboardData.vix), theme: theme)
+                                .onTapGesture { selectedMacroMetric = dashboardData.vix }
+                            MacroMetricCard(metric: dashboardData.oilPrice, valueColor: colorForOilPrice(dashboardData.oilPrice.value), history: history(for: dashboardData.oilPrice), theme: theme)
+                                .onTapGesture { selectedMacroMetric = dashboardData.oilPrice }
+                            MacroMetricCard(metric: dashboardData.yieldSpread, valueColor: colorForYieldSpread(dashboardData.yieldSpread.value), history: history(for: dashboardData.yieldSpread), theme: theme)
+                                .onTapGesture { selectedMacroMetric = dashboardData.yieldSpread }
+                            MacroMetricCard(metric: dashboardData.breakEvenInflation, valueColor: colorForBreakEvenInflation(dashboardData.breakEvenInflation.value), history: history(for: dashboardData.breakEvenInflation), theme: theme)
+                                .onTapGesture { selectedMacroMetric = dashboardData.breakEvenInflation }
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 24) // 마지막 카드와 탭바 사이 최소 여백
+                    } else if let error = errorMessage {
                         Text("Error: \(error)")
                             .foregroundColor(.red)
                             .padding()
+                    } else {
+                        // 로드 전: 샘플 대신 고정 크기 스켈레톤(깜빡임·리사이즈 방지)
+                        DashboardLoadingPlaceholder(theme: theme, cardHeights: Array(repeating: 92, count: 10))
+                            .padding(.top, 8)
                     }
                 }
             }
         }
         .onAppear {
-            // Macro 탭이 나타날 때만 데이터 로드
-            Task {
-                await loadMacroData()
+            // 최초 진입(캐시 없음)에만 로드. 재진입 시엔 캐시 복원값을 그대로 유지(재로딩·값 변동 방지).
+            if !isDataLoaded {
+                Task {
+                    await loadMacroData()
+                }
             }
         }
-        .sheet(isPresented: $showInterestRateInfo) {
-            InterestRateInfoSheet()
-        }
-        .sheet(isPresented: $showTreasury10yInfo) {
-            Treasury10yInfoSheet()
-        }
-        .sheet(isPresented: $showCPIInfo) {
-            CPIInfoSheet()
-        }
-        .sheet(isPresented: $showM2Info) {
-            M2InfoSheet()
-        }
-        .sheet(isPresented: $showUnemploymentInfo) {
-            UnemploymentInfoSheet()
-        }
-        .sheet(isPresented: $showDollarIndexInfo) {
-            DollarIndexInfoSheet()
-        }
-        .sheet(isPresented: $showVixInfo) {
-            VixInfoSheet()
-        }
-        .sheet(isPresented: $showOilPriceInfo) {
-            OilPriceInfoSheet()
-        }
-        .sheet(isPresented: $showYieldSpreadInfo) {
-            YieldSpreadInfoSheet()
-        }
-        .sheet(isPresented: $showBreakEvenInflationInfo) {
-            BreakEvenInflationInfoSheet()
+        .sheet(item: $selectedMacroMetric) { metric in
+            MetricDetailSheet(metric: metric, history: history(for: metric), isMacro: true, endDate: historyEndDate, historyDates: historyDates.isEmpty ? nil : historyDates, theme: theme)
         }
     }
     
+    // 지표 카드의 30일 실데이터 조회(없으면 nil → 카드가 스텁으로 폴백)
+    private func history(for metric: MacroMetric) -> [Double]? {
+        guard let key = IndicatorInterpreter.key(forTitle: metric.title) else { return nil }
+        return histories[key.rawValue]
+    }
+
+    // 최근 6개월 '각 달 1일' 데이터를 받아 지표 key별 배열로 저장한다. 실패하면 비워 카드가 스텁으로 폴백.
+    private func loadMacroHistory(endDate: String) async {
+        // 실패(스텁 폴백) 시에도 X축 날짜가 나오도록 요청 종료일을 먼저 설정
+        let fmt0 = DateFormatter()
+        fmt0.dateFormat = "yyyyMMdd"
+        fmt0.timeZone = TimeZone(identifier: "UTC")
+        historyEndDate = fmt0.date(from: endDate)
+        do {
+            let r = try await MacroAPIService.shared.fetchMacroRange(date: endDate, months: 6)  // 최근 6개월(월 단위 그래프)
+            var h: [String: [Double]] = [:]
+            func put(_ key: IndicatorInterpreter.Key, _ arr: [Double]) {
+                if arr.count >= 2 { h[key.rawValue] = arr }
+            }
+            put(.interestRate, r.interestRates)
+            put(.treasury10y, r.treasury10ys)
+            put(.cpi, r.cpis.map { $0 / 100.0 })  // 카드 rawValue와 동일 단위(%)
+            put(.m2, r.m2s)
+            put(.unemployment, r.unemployments)
+            put(.dollarIndex, r.dollarIndices)
+            put(.vix, r.vixs)
+            put(.oilPrice, r.oilPrices)
+            put(.yieldSpread, r.yieldSpreads)
+            put(.breakEvenInflation, r.breakEvenInflations)
+            histories = h
+            historyDates = r.dates.compactMap { fmt0.date(from: $0) }
+            if let last = historyDates.last { historyEndDate = last }
+            print("✅ Macro 6개월 월별 데이터 로드 완료 - \(r.dates.count)개월")
+        } catch {
+            print("⚠️ Macro 6개월 월별 데이터 로드 실패 → 스텁 폴백: \(error)")
+            histories = [:]
+            historyDates = []
+        }
+    }
+
     private func loadMacroData() async {
         isLoading = true
         errorMessage = nil
@@ -237,18 +236,29 @@ struct MacroDashboardView: View {
                 let breakEvenInflationChange = (data.breakEvenInflation ?? 2.3) - (previousData?.breakEvenInflation ?? 2.3)  // v3.0 신규
 
                 dashboardData = MacroDashboardData(
-                    interestRate: MacroMetric(title: "Interest Rate", subtitle: "Federal Funds Rate", value: String(format: "%.2f%%", interestRateValue), change: formatChange(interestRateChange), changeIsPositive: interestRateChange >= 0),
-                    treasury10y: MacroMetric(title: "10Y Treasury", subtitle: "Yield", value: String(format: "%.2f%%", treasury10yValue), change: formatChange(treasury10yChange), changeIsPositive: treasury10yChange >= 0),
-                    cpi: MacroMetric(title: "CPI", subtitle: "Consumer Price Index", value: String(format: "%.2f%%", cpiValue / 100.0), change: formatChange(cpiChange), changeIsPositive: cpiChange >= 0),
-                    m2: MacroMetric(title: "M2 Money Supply", subtitle: "Billions USD", value: formatM2(m2Value), change: formatChange(m2Change), changeIsPositive: m2Change >= 0),
-                    unemployment: MacroMetric(title: "Unemployment", subtitle: "Rate", value: String(format: "%.2f%%", unemploymentValue), change: formatChange(unemploymentChange), changeIsPositive: unemploymentChange >= 0),
-                    dollarIndex: MacroMetric(title: "Dollar Index", subtitle: "DXY", value: String(format: "%.2f", dollarIndexValue), change: formatChange(dollarIndexChange), changeIsPositive: dollarIndexChange >= 0),
-                    vix: MacroMetric(title: "VIX", subtitle: "Volatility Index", value: String(format: "%.2f", vixValue), change: formatChange(vixChange), changeIsPositive: vixChange <= 0),  // v3.0 신규: 음수(하락) = 좋음
-                    oilPrice: MacroMetric(title: "Oil Price", subtitle: "WTI Crude", value: String(format: "$%.2f", oilPriceValue), change: formatChange(oilPriceChange), changeIsPositive: oilPriceChange >= 0),  // v3.0 신규
-                    yieldSpread: MacroMetric(title: "Yield Spread", subtitle: "T10Y2Y", value: String(format: "%+.2f%%", yieldSpreadValue), change: yieldSpreadChange != 0 ? String(format: "%+.2f%%", yieldSpreadChange) : nil, changeIsPositive: yieldSpreadChange >= 0),  // v3.0 신규
-                    breakEvenInflation: MacroMetric(title: "Break-Even Inflation", subtitle: "10Y BE", value: String(format: "%.2f%%", breakEvenInflationValue), change: breakEvenInflationChange != 0 ? String(format: "%+.2f%%", breakEvenInflationChange) : nil, changeIsPositive: breakEvenInflationChange <= 0)  // v3.0 신규: 2% 근처가 최적
+                    interestRate: MacroMetric(title: "Interest Rate", subtitle: "Federal Funds Rate", value: String(format: "%.2f%%", interestRateValue), change: formatChange(interestRateChange), changeIsPositive: interestRateChange >= 0, rawValue: interestRateValue),
+                    treasury10y: MacroMetric(title: "10Y Treasury", subtitle: "Yield", value: String(format: "%.2f%%", treasury10yValue), change: formatChange(treasury10yChange), changeIsPositive: treasury10yChange >= 0, rawValue: treasury10yValue),
+                    cpi: MacroMetric(title: "CPI", subtitle: "Consumer Price Index", value: String(format: "%.2f%%", cpiValue / 100.0), change: formatChange(cpiChange), changeIsPositive: cpiChange >= 0, rawValue: cpiValue / 100.0),
+                    m2: MacroMetric(title: "M2 Money Supply", subtitle: "Billions USD", value: formatM2(m2Value), change: formatChange(m2Change), changeIsPositive: m2Change >= 0, rawValue: m2Value),
+                    unemployment: MacroMetric(title: "Unemployment", subtitle: "Rate", value: String(format: "%.2f%%", unemploymentValue), change: formatChange(unemploymentChange), changeIsPositive: unemploymentChange >= 0, rawValue: unemploymentValue),
+                    dollarIndex: MacroMetric(title: "Dollar Index", subtitle: "DXY", value: String(format: "%.2f", dollarIndexValue), change: formatChange(dollarIndexChange), changeIsPositive: dollarIndexChange >= 0, rawValue: dollarIndexValue),
+                    vix: MacroMetric(title: "VIX", subtitle: "Volatility Index", value: String(format: "%.2f", vixValue), change: formatChange(vixChange), changeIsPositive: vixChange <= 0, rawValue: vixValue),  // v3.0 신규: 음수(하락) = 좋음
+                    oilPrice: MacroMetric(title: "Oil Price", subtitle: "WTI Crude", value: String(format: "$%.2f", oilPriceValue), change: formatChange(oilPriceChange), changeIsPositive: oilPriceChange >= 0, rawValue: oilPriceValue),  // v3.0 신규
+                    yieldSpread: MacroMetric(title: "Yield Spread", subtitle: "T10Y2Y", value: String(format: "%+.2f%%", yieldSpreadValue), change: yieldSpreadChange != 0 ? String(format: "%+.2f%%", yieldSpreadChange) : nil, changeIsPositive: yieldSpreadChange >= 0, rawValue: yieldSpreadValue),  // v3.0 신규
+                    breakEvenInflation: MacroMetric(title: "Break-Even Inflation", subtitle: "10Y BE", value: String(format: "%.2f%%", breakEvenInflationValue), change: breakEvenInflationChange != 0 ? String(format: "%+.2f%%", breakEvenInflationChange) : nil, changeIsPositive: breakEvenInflationChange <= 0, rawValue: breakEvenInflationValue)  // v3.0 신규: 2% 근처가 최적
                 )
                 print("✅ Macro 데이터 업데이트 완료 - \(displayDate)")
+                isDataLoaded = true   // 실데이터 표시 시작(스켈레톤 종료)
+
+                // 30일 추세 실데이터 로드(실패 시 스텁 폴백)
+                await loadMacroHistory(endDate: displayDate)
+
+                // 재진입 시 즉시 복원용 세션 캐시 갱신
+                MacroDashboardCache.data = dashboardData
+                MacroDashboardCache.histories = histories
+                MacroDashboardCache.historyDates = historyDates
+                MacroDashboardCache.historyEndDate = historyEndDate
+                MacroDashboardCache.updatedTime = updatedTime
             } else {
                 print("⚠️ requestDate·previousDate 모두 nil. 데이터 없음.")
                 updatedTime = ""
@@ -469,6 +479,7 @@ struct MacroDashboardView: View {
 struct MacroMetricCard: View {
     let metric: MacroMetric
     let valueColor: Color
+    var history: [Double]? = nil   // 30일 실데이터(없으면 스텁)
     @ObservedObject var theme: ThemeManager
     @AppStorage("selectedLanguage") private var selectedLanguage: String = "ENG"
 
@@ -477,8 +488,27 @@ struct MacroMetricCard: View {
         return Localization.shared
     }
 
+    // 값 연동 해석 (rawValue + 전일 대비 추세). 매핑 없거나 rawValue 없으면 nil.
+    private var interpretation: IndicatorInterpretation? {
+        guard let key = IndicatorInterpreter.key(forTitle: metric.title),
+              let raw = metric.rawValue else { return nil }
+        let trend: TrendDirection = metric.changeIsPositive == nil
+            ? .flat
+            : (metric.changeIsPositive! ? .up : .down)
+        return IndicatorInterpreter.interpret(key, value: raw, trend: trend, language: selectedLanguage)
+    }
+
+    // 30일 스파크라인 (실데이터 우선, 없으면 스텁)
+    private var sparkline: [Double]? {
+        guard let key = IndicatorInterpreter.key(forTitle: metric.title),
+              let raw = metric.rawValue else { return nil }
+        if let history, history.count >= 2 { return history }
+        return CryptoHistoryProvider.history(for: key, current: raw, days: 30)
+    }
+
     var body: some View {
-        HStack(spacing: 16) {
+        VStack(spacing: 12) {
+            HStack(spacing: 16) {
             // Icon placeholder
             Circle()
                 .fill(theme.cardIconBackground)
@@ -509,6 +539,30 @@ struct MacroMetricCard: View {
                 Image(systemName: "arrow.right")
                     .font(.system(size: 10))
                     .foregroundColor(theme.tertiaryText)
+            }
+            }
+
+            // 30일 추세 스파크라인 (실데이터 우선, 없으면 스텁)
+            if let spark = sparkline {
+                TrendChartView(values: spark, mode: .spark)
+            }
+
+            // 값 연동 1줄 해석 (오늘 값/방향의 의미)
+            if let interp = interpretation {
+                VStack(spacing: 8) {
+                    Rectangle()
+                        .fill(Color.white.opacity(0.06))
+                        .frame(height: 0.5)
+                    HStack(spacing: 6) {
+                        Text(interp.sentiment.symbol)
+                            .font(.system(size: 12, weight: .bold))
+                        Text(interp.text)
+                            .font(.system(size: 11.5, weight: .medium))
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 0)
+                    }
+                    .foregroundColor(interp.sentiment.color)
+                }
             }
         }
         .padding(16)
@@ -552,866 +606,6 @@ struct MacroMetricCard: View {
             return "chart.line.downtrend.xyaxis"
         default:
             return "circle.fill"
-        }
-    }
-}
-
-// MARK: - Interest Rate Info Sheet
-struct InterestRateInfoSheet: View {
-    @Environment(\.dismiss) var dismiss
-    @AppStorage("selectedLanguage") private var selectedLanguage: String = "ENG"
-    
-    private var localization: Localization {
-        Localization.shared.language = selectedLanguage
-        return Localization.shared
-    }
-    
-    var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    // Header Icon
-                    HStack {
-                        Spacer()
-                        Circle()
-                            .fill(Color.blue.opacity(0.2))
-                            .frame(width: 80, height: 80)
-                            .overlay(
-                                Image(systemName: "percent")
-                                    .font(.system(size: 40, weight: .bold))
-                                    .foregroundColor(.blue)
-                            )
-                        Spacer()
-                    }
-                    .padding(.top, 20)
-                    
-                    // Title
-                    Text(localization.macroMetric("Interest Rate"))
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundColor(.primary)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity)
-                    
-                    // Description
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text(localization.infoSheet("What is the Federal Funds Rate?"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-                        
-                        Text(localization.infoSheet("The Federal Funds Rate is the interest rate at which depository institutions (banks) lend reserve balances to other depository institutions overnight. It's set by the Federal Reserve and is one of the most important economic indicators."))
-                            .font(.system(size: 16))
-                            .foregroundColor(.secondary)
-                            .lineSpacing(4)
-                        
-                        Text(localization.infoSheet("Key Points"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .padding(.top, 8)
-                        
-                        VStack(alignment: .leading, spacing: 12) {
-                            MacroInfoRow(icon: "arrow.up.circle.fill", title: localization.infoSheet("Rate Increases"), description: localization.infoSheet("Tightens monetary policy, slows economic growth"))
-                            MacroInfoRow(icon: "arrow.down.circle.fill", title: localization.infoSheet("Rate Decreases"), description: localization.infoSheet("Loosens monetary policy, stimulates growth"))
-                            MacroInfoRow(icon: "chart.line.uptrend.xyaxis", title: localization.infoSheet("Market Impact"), description: localization.infoSheet("Affects borrowing costs and investment decisions"))
-                        }
-                        
-                        Text(localization.infoSheet("How It Works"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .padding(.top, 8)
-                        
-                        Text(localization.infoSheet("The Federal Reserve adjusts the federal funds rate to influence economic activity. When rates rise, borrowing becomes more expensive, which can slow inflation but also economic growth. When rates fall, borrowing becomes cheaper, stimulating spending and investment. This rate directly impacts mortgage rates, credit card rates, and other consumer loans."))
-                            .font(.system(size: 16))
-                            .foregroundColor(.secondary)
-                            .lineSpacing(4)
-                    }
-                    .padding(.horizontal, 20)
-                }
-                .padding(.bottom, 40)
-            }
-            .background(Color(.systemBackground))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(localization.common("Done")) {
-                        dismiss()
-                    }
-                    .foregroundColor(.blue)
-                }
-            }
-        }
-    }
-}
-
-// MARK: - 10Y Treasury Info Sheet
-struct Treasury10yInfoSheet: View {
-    @Environment(\.dismiss) var dismiss
-    @AppStorage("selectedLanguage") private var selectedLanguage: String = "ENG"
-    
-    private var localization: Localization {
-        Localization.shared.language = selectedLanguage
-        return Localization.shared
-    }
-    
-    var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    // Header Icon
-                    HStack {
-                        Spacer()
-                        Circle()
-                            .fill(Color.green.opacity(0.2))
-                            .frame(width: 80, height: 80)
-                            .overlay(
-                                Image(systemName: "chart.line.uptrend.xyaxis")
-                                    .font(.system(size: 40, weight: .bold))
-                                    .foregroundColor(.green)
-                            )
-                        Spacer()
-                    }
-                    .padding(.top, 20)
-                    
-                    // Title
-                    Text(localization.macroMetric("10Y Treasury"))
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundColor(.primary)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity)
-                    
-                    // Description
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text(localization.infoSheet("What is the 10-Year Treasury Yield?"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-                        
-                        Text(localization.infoSheet("The 10-Year Treasury Yield is the return on investment for the U.S. government's 10-year bond. It's considered a benchmark for long-term interest rates and is closely watched as an indicator of economic expectations."))
-                            .font(.system(size: 16))
-                            .foregroundColor(.secondary)
-                            .lineSpacing(4)
-                        
-                        Text(localization.infoSheet("Key Points"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .padding(.top, 8)
-                        
-                        VStack(alignment: .leading, spacing: 12) {
-                            MacroInfoRow(icon: "arrow.up.circle.fill", title: localization.infoSheet("Rising Yields"), description: localization.infoSheet("Often signals economic growth expectations"))
-                            MacroInfoRow(icon: "arrow.down.circle.fill", title: localization.infoSheet("Falling Yields"), description: localization.infoSheet("May indicate economic concerns or flight to safety"))
-                            MacroInfoRow(icon: "chart.bar.fill", title: localization.infoSheet("Risk-Free Rate"), description: localization.infoSheet("Used as benchmark for other investments"))
-                        }
-                        
-                        Text(localization.infoSheet("How It Works"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .padding(.top, 8)
-                        
-                        Text(localization.infoSheet("When investors buy Treasury bonds, they're lending money to the U.S. government. The yield represents the return they receive. Higher yields typically indicate stronger economic growth expectations or inflation concerns. Lower yields may suggest economic uncertainty or deflationary pressures. The 10-year yield is particularly important as it influences mortgage rates, corporate borrowing costs, and stock valuations."))
-                            .font(.system(size: 16))
-                            .foregroundColor(.secondary)
-                            .lineSpacing(4)
-                    }
-                    .padding(.horizontal, 20)
-                }
-                .padding(.bottom, 40)
-            }
-            .background(Color(.systemBackground))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(localization.common("Done")) {
-                        dismiss()
-                    }
-                    .foregroundColor(.blue)
-                }
-            }
-        }
-    }
-}
-
-// MARK: - CPI Info Sheet
-struct CPIInfoSheet: View {
-    @Environment(\.dismiss) var dismiss
-    @AppStorage("selectedLanguage") private var selectedLanguage: String = "ENG"
-    
-    private var localization: Localization {
-        Localization.shared.language = selectedLanguage
-        return Localization.shared
-    }
-    
-    var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    // Header Icon
-                    HStack {
-                        Spacer()
-                        Circle()
-                            .fill(Color.orange.opacity(0.2))
-                            .frame(width: 80, height: 80)
-                            .overlay(
-                                Image(systemName: "chart.bar.fill")
-                                    .font(.system(size: 40, weight: .bold))
-                                    .foregroundColor(.orange)
-                            )
-                        Spacer()
-                    }
-                    .padding(.top, 20)
-                    
-                    // Title
-                    Text(localization.macroMetric("CPI"))
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundColor(.primary)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity)
-                    
-                    // Description
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text(localization.infoSheet("What is CPI?"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-                        
-                        Text(localization.infoSheet("The Consumer Price Index (CPI) measures the average change over time in the prices paid by urban consumers for a market basket of consumer goods and services. It's the most widely used indicator of inflation."))
-                            .font(.system(size: 16))
-                            .foregroundColor(.secondary)
-                            .lineSpacing(4)
-                        
-                        Text(localization.infoSheet("Key Points"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .padding(.top, 8)
-                        
-                        VStack(alignment: .leading, spacing: 12) {
-                            MacroInfoRow(icon: "arrow.up.circle.fill", title: localization.infoSheet("Rising CPI"), description: localization.infoSheet("Indicates inflation - prices are increasing"))
-                            MacroInfoRow(icon: "arrow.down.circle.fill", title: localization.infoSheet("Falling CPI"), description: localization.infoSheet("Indicates deflation - prices are decreasing"))
-                            MacroInfoRow(icon: "target", title: localization.infoSheet("Target Rate"), description: localization.infoSheet("Central banks typically target 2% inflation"))
-                        }
-                        
-                        Text(localization.infoSheet("How It Works"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .padding(.top, 8)
-                        
-                        Text(localization.infoSheet("The CPI tracks price changes for a basket of goods and services that represents what typical consumers buy, including food, housing, transportation, medical care, and more. When CPI rises, it means consumers need to spend more to buy the same goods, indicating inflation. Central banks use CPI data to make monetary policy decisions. High inflation erodes purchasing power, while deflation can signal economic weakness."))
-                            .font(.system(size: 16))
-                            .foregroundColor(.secondary)
-                            .lineSpacing(4)
-                    }
-                    .padding(.horizontal, 20)
-                }
-                .padding(.bottom, 40)
-            }
-            .background(Color(.systemBackground))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(localization.common("Done")) {
-                        dismiss()
-                    }
-                    .foregroundColor(.blue)
-                }
-            }
-        }
-    }
-}
-
-// MARK: - M2 Money Supply Info Sheet
-struct M2InfoSheet: View {
-    @Environment(\.dismiss) var dismiss
-    @AppStorage("selectedLanguage") private var selectedLanguage: String = "ENG"
-    
-    private var localization: Localization {
-        Localization.shared.language = selectedLanguage
-        return Localization.shared
-    }
-    
-    var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    // Header Icon
-                    HStack {
-                        Spacer()
-                        Circle()
-                            .fill(Color.yellow.opacity(0.2))
-                            .frame(width: 80, height: 80)
-                            .overlay(
-                                Image(systemName: "dollarsign.circle.fill")
-                                    .font(.system(size: 40, weight: .bold))
-                                    .foregroundColor(.yellow)
-                            )
-                        Spacer()
-                    }
-                    .padding(.top, 20)
-                    
-                    // Title
-                    Text(localization.macroMetric("M2 Money Supply"))
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundColor(.primary)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity)
-                    
-                    // Description
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text(localization.infoSheet("What is M2 Money Supply?"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-                        
-                        Text(localization.infoSheet("M2 is a measure of the money supply that includes cash, checking deposits, savings deposits, money market securities, and other time deposits. It represents the total amount of money available in the economy for spending and investment."))
-                            .font(.system(size: 16))
-                            .foregroundColor(.secondary)
-                            .lineSpacing(4)
-                        
-                        Text(localization.infoSheet("Key Points"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .padding(.top, 8)
-                        
-                        VStack(alignment: .leading, spacing: 12) {
-                            MacroInfoRow(icon: "arrow.up.circle.fill", title: localization.infoSheet("Increasing M2"), description: localization.infoSheet("More money in circulation, can fuel inflation"))
-                            MacroInfoRow(icon: "arrow.down.circle.fill", title: localization.infoSheet("Decreasing M2"), description: localization.infoSheet("Less money available, may slow economic activity"))
-                            MacroInfoRow(icon: "chart.line.uptrend.xyaxis", title: localization.infoSheet("Economic Indicator"), description: localization.infoSheet("Reflects monetary policy and economic health"))
-                        }
-                        
-                        Text(localization.infoSheet("How It Works"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .padding(.top, 8)
-                        
-                        Text(localization.infoSheet("M2 includes all forms of money that are easily accessible for spending. When the Federal Reserve increases the money supply (through quantitative easing or other measures), M2 rises. This can stimulate economic activity but may also lead to inflation if it grows too quickly. Conversely, a shrinking M2 can indicate tighter monetary policy or economic contraction. It's measured in billions of U.S. dollars."))
-                            .font(.system(size: 16))
-                            .foregroundColor(.secondary)
-                            .lineSpacing(4)
-                    }
-                    .padding(.horizontal, 20)
-                }
-                .padding(.bottom, 40)
-            }
-            .background(Color(.systemBackground))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(localization.common("Done")) {
-                        dismiss()
-                    }
-                    .foregroundColor(.blue)
-                }
-            }
-        }
-    }
-}
-
-// MARK: - Unemployment Info Sheet
-struct UnemploymentInfoSheet: View {
-    @Environment(\.dismiss) var dismiss
-    @AppStorage("selectedLanguage") private var selectedLanguage: String = "ENG"
-    
-    private var localization: Localization {
-        Localization.shared.language = selectedLanguage
-        return Localization.shared
-    }
-    
-    var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    // Header Icon
-                    HStack {
-                        Spacer()
-                        Circle()
-                            .fill(Color.red.opacity(0.2))
-                            .frame(width: 80, height: 80)
-                            .overlay(
-                                Image(systemName: "person.2.fill")
-                                    .font(.system(size: 40, weight: .bold))
-                                    .foregroundColor(.red)
-                            )
-                        Spacer()
-                    }
-                    .padding(.top, 20)
-                    
-                    // Title
-                    Text(localization.macroMetric("Unemployment"))
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundColor(.primary)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity)
-                    
-                    // Description
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text(localization.infoSheet("What is the Unemployment Rate?"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-                        
-                        Text(localization.infoSheet("The Unemployment Rate measures the percentage of the labor force that is jobless and actively seeking employment. It's a key indicator of economic health and labor market conditions."))
-                            .font(.system(size: 16))
-                            .foregroundColor(.secondary)
-                            .lineSpacing(4)
-                        
-                        Text(localization.infoSheet("Key Points"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .padding(.top, 8)
-                        
-                        VStack(alignment: .leading, spacing: 12) {
-                            MacroInfoRow(icon: "arrow.down.circle.fill", title: localization.infoSheet("Low Unemployment"), description: localization.infoSheet("Strong economy, tight labor market"))
-                            MacroInfoRow(icon: "arrow.up.circle.fill", title: localization.infoSheet("High Unemployment"), description: localization.infoSheet("Weak economy, excess labor supply"))
-                            MacroInfoRow(icon: "target", title: localization.infoSheet("Natural Rate"), description: localization.infoSheet("Typically around 4-5% in healthy economies"))
-                        }
-                        
-                        Text(localization.infoSheet("How It Works"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .padding(.top, 8)
-                        
-                        Text(localization.infoSheet("The unemployment rate is calculated by dividing the number of unemployed people by the total labor force (employed + unemployed). A low unemployment rate indicates a strong job market and healthy economy, but extremely low rates can lead to wage inflation. High unemployment suggests economic weakness and can lead to reduced consumer spending. The Federal Reserve considers unemployment when setting monetary policy, as it relates to both inflation and economic growth."))
-                            .font(.system(size: 16))
-                            .foregroundColor(.secondary)
-                            .lineSpacing(4)
-                    }
-                    .padding(.horizontal, 20)
-                }
-                .padding(.bottom, 40)
-            }
-            .background(Color(.systemBackground))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(localization.common("Done")) {
-                        dismiss()
-                    }
-                    .foregroundColor(.blue)
-                }
-            }
-        }
-    }
-}
-
-// MARK: - Dollar Index Info Sheet
-struct DollarIndexInfoSheet: View {
-    @Environment(\.dismiss) var dismiss
-    @AppStorage("selectedLanguage") private var selectedLanguage: String = "ENG"
-    
-    private var localization: Localization {
-        Localization.shared.language = selectedLanguage
-        return Localization.shared
-    }
-    
-    var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    // Header Icon
-                    HStack {
-                        Spacer()
-                        Circle()
-                            .fill(Color.green.opacity(0.2))
-                            .frame(width: 80, height: 80)
-                            .overlay(
-                                Image(systemName: "dollarsign.square.fill")
-                                    .font(.system(size: 40, weight: .bold))
-                                    .foregroundColor(.green)
-                            )
-                        Spacer()
-                    }
-                    .padding(.top, 20)
-                    
-                    // Title
-                    Text(localization.macroMetric("Dollar Index"))
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundColor(.primary)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity)
-                    
-                    // Description
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text(localization.infoSheet("What is the Dollar Index?"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-                        
-                        Text(localization.infoSheet("The U.S. Dollar Index (DXY) measures the value of the U.S. dollar against a basket of foreign currencies, including the Euro, Japanese Yen, British Pound, Canadian Dollar, Swedish Krona, and Swiss Franc. It's a key indicator of dollar strength."))
-                            .font(.system(size: 16))
-                            .foregroundColor(.secondary)
-                            .lineSpacing(4)
-                        
-                        Text(localization.infoSheet("Key Points"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .padding(.top, 8)
-                        
-                        VStack(alignment: .leading, spacing: 12) {
-                            MacroInfoRow(icon: "arrow.up.circle.fill", title: localization.infoSheet("Rising DXY"), description: localization.infoSheet("Strong dollar, makes imports cheaper"))
-                            MacroInfoRow(icon: "arrow.down.circle.fill", title: localization.infoSheet("Falling DXY"), description: localization.infoSheet("Weak dollar, makes exports more competitive"))
-                            MacroInfoRow(icon: "globe", title: localization.infoSheet("Global Impact"), description: localization.infoSheet("Affects international trade and commodity prices"))
-                        }
-                        
-                        Text(localization.infoSheet("How It Works"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .padding(.top, 8)
-                        
-                        Text(localization.infoSheet("The Dollar Index is calculated as a weighted geometric mean of the dollar's value against the basket of currencies. A value above 100 means the dollar is stronger than the baseline (set in 1973), while below 100 means it's weaker. A strong dollar makes U.S. exports more expensive but imports cheaper, while a weak dollar has the opposite effect. The index is closely watched by traders, investors, and policymakers as it impacts global trade, commodity prices (which are often priced in dollars), and emerging market economies."))
-                            .font(.system(size: 16))
-                            .foregroundColor(.secondary)
-                            .lineSpacing(4)
-                    }
-                    .padding(.horizontal, 20)
-                }
-                .padding(.bottom, 40)
-            }
-            .background(Color(.systemBackground))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(localization.common("Done")) {
-                        dismiss()
-                    }
-                    .foregroundColor(.blue)
-                }
-            }
-        }
-    }
-}
-
-// MARK: - VIX Info Sheet
-struct VixInfoSheet: View {
-    @Environment(\.dismiss) var dismiss
-    @AppStorage("selectedLanguage") private var selectedLanguage: String = "ENG"
-
-    private var localization: Localization {
-        Localization.shared.language = selectedLanguage
-        return Localization.shared
-    }
-
-    var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    // Header Icon
-                    HStack {
-                        Spacer()
-                        Circle()
-                            .fill(Color.red.opacity(0.2))
-                            .frame(width: 80, height: 80)
-                            .overlay(
-                                Image(systemName: "bolt.fill")
-                                    .font(.system(size: 40, weight: .bold))
-                                    .foregroundColor(.red)
-                            )
-                        Spacer()
-                    }
-                    .padding(.top, 20)
-
-                    // Title
-                    Text(localization.macroMetric("VIX"))
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundColor(.primary)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity)
-
-                    // Description
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text(localization.infoSheet("What is the VIX?"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-
-                        Text(localization.infoSheet("The VIX (Volatility Index), also known as the 'Fear Index,' measures the market's expectation of 30-day volatility based on S&P 500 index option prices. It's a key gauge of investor fear and market uncertainty."))
-                            .font(.system(size: 16))
-                            .foregroundColor(.secondary)
-                            .lineSpacing(4)
-
-                        Text(localization.infoSheet("Key Points"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .padding(.top, 8)
-
-                        VStack(alignment: .leading, spacing: 12) {
-                            MacroInfoRow(icon: "arrow.down.circle.fill", title: localization.infoSheet("Low VIX (≤15)"), description: localization.infoSheet("Low fear, stable markets, bullish sentiment"))
-                            MacroInfoRow(icon: "arrow.up.circle.fill", title: localization.infoSheet("High VIX (>30)"), description: localization.infoSheet("High fear, volatile markets, risk-off sentiment"))
-                            MacroInfoRow(icon: "chart.line.uptrend.xyaxis", title: localization.infoSheet("Market Indicator"), description: localization.infoSheet("Inverse correlation with stock market performance"))
-                        }
-
-                        Text(localization.infoSheet("How It Works"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .padding(.top, 8)
-
-                        Text(localization.infoSheet("The VIX is derived from the implied volatility of S&P 500 index options, representing what traders expect about future market swings. When investors are confident, the VIX stays low; when uncertainty increases, the VIX rises sharply. A VIX below 15 typically indicates complacency and strong risk appetite. A spike above 30 signals panic and flight to safety. Crypto markets often move in inverse correlation with the VIX - when traditional markets stabilize (VIX falls), capital may flow back to risk assets like crypto."))
-                            .font(.system(size: 16))
-                            .foregroundColor(.secondary)
-                            .lineSpacing(4)
-                    }
-                    .padding(.horizontal, 20)
-                }
-                .padding(.bottom, 40)
-            }
-            .background(Color(.systemBackground))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(localization.common("Done")) {
-                        dismiss()
-                    }
-                    .foregroundColor(.blue)
-                }
-            }
-        }
-    }
-}
-
-// MARK: - Oil Price Info Sheet
-struct OilPriceInfoSheet: View {
-    @Environment(\.dismiss) var dismiss
-    @AppStorage("selectedLanguage") private var selectedLanguage: String = "ENG"
-
-    private var localization: Localization {
-        Localization.shared.language = selectedLanguage
-        return Localization.shared
-    }
-
-    var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    // Header Icon
-                    HStack {
-                        Spacer()
-                        Circle()
-                            .fill(Color.orange.opacity(0.2))
-                            .frame(width: 80, height: 80)
-                            .overlay(
-                                Image(systemName: "drop.fill")
-                                    .font(.system(size: 40, weight: .bold))
-                                    .foregroundColor(.orange)
-                            )
-                        Spacer()
-                    }
-                    .padding(.top, 20)
-
-                    // Title
-                    Text(localization.macroMetric("Oil Price"))
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundColor(.primary)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity)
-
-                    // Description
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text(localization.infoSheet("What is Oil Price?"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-
-                        Text(localization.infoSheet("The Oil Price (WTI Crude) is the cost per barrel of West Texas Intermediate crude oil, a primary benchmark for global oil prices. It reflects supply-demand dynamics and geopolitical factors that impact the global economy."))
-                            .font(.system(size: 16))
-                            .foregroundColor(.secondary)
-                            .lineSpacing(4)
-
-                        Text(localization.infoSheet("Key Points"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .padding(.top, 8)
-
-                        VStack(alignment: .leading, spacing: 12) {
-                            MacroInfoRow(icon: "chart.line.uptrend.xyaxis", title: localization.infoSheet("Optimal Range ($60-80)"), description: localization.infoSheet("Stable prices support economic growth"))
-                            MacroInfoRow(icon: "arrow.up.circle.fill", title: localization.infoSheet("High Oil Prices (>$90)"), description: localization.infoSheet("Inflation pressure, reduces consumer spending"))
-                            MacroInfoRow(icon: "arrow.down.circle.fill", title: localization.infoSheet("Low Oil Prices (<$50)"), description: localization.infoSheet("Economic weakness signal, deflationary pressure"))
-                        }
-
-                        Text(localization.infoSheet("How It Works"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .padding(.top, 8)
-
-                        Text(localization.infoSheet("Oil prices impact inflation, transportation costs, and manufacturing expenses across the economy. High oil prices can trigger stagflation (high inflation with weak growth), while low prices may indicate recession fears. The price is driven by OPEC production decisions, geopolitical events, supply disruptions, and global economic growth expectations. For crypto investors, elevated oil prices often correlate with inflation concerns that drive investment in alternative assets like Bitcoin."))
-                            .font(.system(size: 16))
-                            .foregroundColor(.secondary)
-                            .lineSpacing(4)
-                    }
-                    .padding(.horizontal, 20)
-                }
-                .padding(.bottom, 40)
-            }
-            .background(Color(.systemBackground))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(localization.common("Done")) {
-                        dismiss()
-                    }
-                    .foregroundColor(.blue)
-                }
-            }
-        }
-    }
-}
-
-// MARK: - Yield Spread Info Sheet
-struct YieldSpreadInfoSheet: View {
-    @Environment(\.dismiss) var dismiss
-    @AppStorage("selectedLanguage") private var selectedLanguage: String = "ENG"
-
-    private var localization: Localization {
-        Localization.shared.language = selectedLanguage
-        return Localization.shared
-    }
-
-    var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    // Header Icon
-                    HStack {
-                        Spacer()
-                        Circle()
-                            .fill(Color.purple.opacity(0.2))
-                            .frame(width: 80, height: 80)
-                            .overlay(
-                                Image(systemName: "arrow.up.arrow.down")
-                                    .font(.system(size: 40, weight: .bold))
-                                    .foregroundColor(.purple)
-                            )
-                        Spacer()
-                    }
-                    .padding(.top, 20)
-
-                    // Title
-                    Text(localization.macroMetric("Yield Spread"))
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundColor(.primary)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity)
-
-                    // Description
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text(localization.infoSheet("What is Yield Spread?"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-
-                        Text(localization.infoSheet("The Yield Spread (T10Y2Y) is the difference between 10-year and 2-year U.S. Treasury yields. It's a critical indicator of economic expectations and is often used as a recession predictor when the curve inverts (negative spread)."))
-                            .font(.system(size: 16))
-                            .foregroundColor(.secondary)
-                            .lineSpacing(4)
-
-                        Text(localization.infoSheet("Key Points"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .padding(.top, 8)
-
-                        VStack(alignment: .leading, spacing: 12) {
-                            MacroInfoRow(icon: "arrow.up.circle.fill", title: localization.infoSheet("Positive Spread (>0.5%)"), description: localization.infoSheet("Normal curve, economic growth expected"))
-                            MacroInfoRow(icon: "arrow.down.circle.fill", title: localization.infoSheet("Negative Spread (<0%)"), description: localization.infoSheet("Inverted curve, recession warning signal"))
-                            MacroInfoRow(icon: "exclamationmark.circle.fill", title: localization.infoSheet("Recession Predictor"), description: localization.infoSheet("Inversion has preceded most U.S. recessions"))
-                        }
-
-                        Text(localization.infoSheet("How It Works"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .padding(.top, 8)
-
-                        Text(localization.infoSheet("Normally, longer-term bonds have higher yields than shorter-term bonds (positive spread). When short-term rates rise above long-term rates due to expected future economic weakness, the curve inverts. This inversion has been a reliable predictor of recession: every inversion in the past 50 years has preceded a downturn. For crypto markets, yield curve inversion often triggers risk-off sentiment, but it can also precede monetary policy shifts (rate cuts) that eventually support alternative assets."))
-                            .font(.system(size: 16))
-                            .foregroundColor(.secondary)
-                            .lineSpacing(4)
-                    }
-                    .padding(.horizontal, 20)
-                }
-                .padding(.bottom, 40)
-            }
-            .background(Color(.systemBackground))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(localization.common("Done")) {
-                        dismiss()
-                    }
-                    .foregroundColor(.blue)
-                }
-            }
-        }
-    }
-}
-
-// MARK: - Break-Even Inflation Info Sheet
-struct BreakEvenInflationInfoSheet: View {
-    @Environment(\.dismiss) var dismiss
-    @AppStorage("selectedLanguage") private var selectedLanguage: String = "ENG"
-
-    private var localization: Localization {
-        Localization.shared.language = selectedLanguage
-        return Localization.shared
-    }
-
-    var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    // Header Icon
-                    HStack {
-                        Spacer()
-                        Circle()
-                            .fill(Color.red.opacity(0.2))
-                            .frame(width: 80, height: 80)
-                            .overlay(
-                                Image(systemName: "chart.line.downtrend.xyaxis")
-                                    .font(.system(size: 40, weight: .bold))
-                                    .foregroundColor(.red)
-                            )
-                        Spacer()
-                    }
-                    .padding(.top, 20)
-
-                    // Title
-                    Text(localization.macroMetric("Break-Even Inflation"))
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundColor(.primary)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity)
-
-                    // Description
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text(localization.infoSheet("What is Break-Even Inflation?"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-
-                        Text(localization.infoSheet("Break-Even Inflation (10Y BE) is the market's expectation of average inflation over the next 10 years, derived from the difference between nominal Treasury yields and TIPS (Treasury Inflation-Protected Securities) yields. It reflects investor inflation expectations."))
-                            .font(.system(size: 16))
-                            .foregroundColor(.secondary)
-                            .lineSpacing(4)
-
-                        Text(localization.infoSheet("Key Points"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .padding(.top, 8)
-
-                        VStack(alignment: .leading, spacing: 12) {
-                            MacroInfoRow(icon: "target", title: localization.infoSheet("Optimal Range (1.8-2.3%)"), description: localization.infoSheet("Fed target achieved, stable growth"))
-                            MacroInfoRow(icon: "arrow.up.circle.fill", title: localization.infoSheet("Above 2.5%"), description: localization.infoSheet("Inflation concerns, may trigger policy tightening"))
-                            MacroInfoRow(icon: "arrow.down.circle.fill", title: localization.infoSheet("Below 1.5%"), description: localization.infoSheet("Deflation fears, economic weakness signal"))
-                        }
-
-                        Text(localization.infoSheet("How It Works"))
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .padding(.top, 8)
-
-                        Text(localization.infoSheet("Market participants buy TIPS to protect against inflation, creating a spread with nominal Treasuries. This spread reflects inflation expectations. When expectations rise above the Fed's 2% target, the central bank may maintain hawkish policies to contain inflation, which pressures risk assets. Conversely, when expectations fall below target, it may signal demand weakness or impending rate cuts. For crypto investors, elevated inflation expectations can support Bitcoin as an inflation hedge, while deflation fears typically trigger broad risk-off sentiment."))
-                            .font(.system(size: 16))
-                            .foregroundColor(.secondary)
-                            .lineSpacing(4)
-                    }
-                    .padding(.horizontal, 20)
-                }
-                .padding(.bottom, 40)
-            }
-            .background(Color(.systemBackground))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(localization.common("Done")) {
-                        dismiss()
-                    }
-                    .foregroundColor(.blue)
-                }
-            }
         }
     }
 }

@@ -91,6 +91,9 @@ class Localization {
             case "Interaction": return "종합 환경"
             case "Investment Rationale": return "투자 근거"
             case "Unable to calculate score.": return "점수를 계산할 수 없습니다."
+            case "7-Day Score Trend": return "7일 점수 추이"
+            case "No analysis available": return "해당 날짜의 분석이 없습니다"
+            case "Today": return "오늘"
             default: return key
             }
         default:
@@ -110,6 +113,9 @@ class Localization {
             case "Investment Rationale": return "Investment Rationale"
             case "Unable to calculate score.": return "Unable to calculate score."
             case "CPI": return "CPI"
+            case "7-Day Score Trend": return "7-Day Score Trend"
+            case "No analysis available": return "No analysis available for this date"
+            case "Today": return "Today"
             default: return key
             }
         }

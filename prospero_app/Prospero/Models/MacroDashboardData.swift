@@ -7,12 +7,16 @@
 
 import Foundation
 
-struct MacroMetric {
+struct MacroMetric: Identifiable {
     let title: String
     let subtitle: String
     let value: String
     let change: String? // optional change indicator
     let changeIsPositive: Bool?
+    var rawValue: Double? = nil  // 값 연동 해석용 원시 수치 (nil이면 해석 표시 안 함)
+
+    // 상세 시트 `.sheet(item:)` 식별용. 10개 지표 타이틀은 서로 겹치지 않음.
+    var id: String { title }
 }
 
 struct MacroDashboardData {
@@ -27,78 +31,18 @@ struct MacroDashboardData {
     let yieldSpread: MacroMetric      // v3.0 신규
     let breakEvenInflation: MacroMetric // v3.0 신규
     
-    // ⚠️ 임시 샘플 데이터 - API 호출 실패 시에만 사용됩니다
-    static let sample = MacroDashboardData(
-        interestRate: MacroMetric(
-            title: "Interest Rate",
-            subtitle: "Federal Funds Rate",
-            value: "5.25%",
-            change: "▲ +0.25%",
-            changeIsPositive: true
-        ),
-        treasury10y: MacroMetric(
-            title: "10Y Treasury",
-            subtitle: "Yield",
-            value: "4.25%",
-            change: "▲ +0.10%",
-            changeIsPositive: true
-        ),
-        cpi: MacroMetric(
-            title: "CPI",
-            subtitle: "Consumer Price Index",
-            value: "3.26%",
-            change: "▼ -0.1%",
-            changeIsPositive: false
-        ),
-        m2: MacroMetric(
-            title: "M2 Money Supply",
-            subtitle: "Billions USD",
-            value: "21,000",
-            change: "▲ +100",
-            changeIsPositive: true
-        ),
-        unemployment: MacroMetric(
-            title: "Unemployment",
-            subtitle: "Rate",
-            value: "3.7%",
-            change: "▼ -0.1%",
-            changeIsPositive: false
-        ),
-        dollarIndex: MacroMetric(
-            title: "Dollar Index",
-            subtitle: "DXY",
-            value: "106.7",
-            change: "▲ +0.5",
-            changeIsPositive: true
-        ),
-        vix: MacroMetric(
-            title: "VIX",
-            subtitle: "Volatility Index",
-            value: "18.45",
-            change: "▼ -1.2",
-            changeIsPositive: false
-        ),
-        oilPrice: MacroMetric(
-            title: "Oil Price",
-            subtitle: "WTI Crude (USD/Barrel)",
-            value: "$72.50",
-            change: "▲ +1.5%",
-            changeIsPositive: true
-        ),
-        yieldSpread: MacroMetric(
-            title: "Yield Spread",
-            subtitle: "T10Y2Y",
-            value: "+0.65%",
-            change: "▲ +0.08%",
-            changeIsPositive: true
-        ),
-        breakEvenInflation: MacroMetric(
-            title: "Break-Even Inflation",
-            subtitle: "10Y BE",
-            value: "2.15%",
-            change: "▼ -0.05%",
-            changeIsPositive: false
-        )
+    // 로드 전 초기 자리표시자(중립 빈값). 스켈레톤에 가려 화면엔 안 보이며, 가짜 샘플 수치를 쓰지 않는다.
+    static let empty = MacroDashboardData(
+        interestRate: MacroMetric(title: "Interest Rate", subtitle: "Federal Funds Rate", value: "—", change: nil, changeIsPositive: nil),
+        treasury10y: MacroMetric(title: "10Y Treasury", subtitle: "Yield", value: "—", change: nil, changeIsPositive: nil),
+        cpi: MacroMetric(title: "CPI", subtitle: "Consumer Price Index", value: "—", change: nil, changeIsPositive: nil),
+        m2: MacroMetric(title: "M2 Money Supply", subtitle: "Billions USD", value: "—", change: nil, changeIsPositive: nil),
+        unemployment: MacroMetric(title: "Unemployment", subtitle: "Rate", value: "—", change: nil, changeIsPositive: nil),
+        dollarIndex: MacroMetric(title: "Dollar Index", subtitle: "DXY", value: "—", change: nil, changeIsPositive: nil),
+        vix: MacroMetric(title: "VIX", subtitle: "Volatility Index", value: "—", change: nil, changeIsPositive: nil),
+        oilPrice: MacroMetric(title: "Oil Price", subtitle: "WTI Crude (USD/Barrel)", value: "—", change: nil, changeIsPositive: nil),
+        yieldSpread: MacroMetric(title: "Yield Spread", subtitle: "T10Y2Y", value: "—", change: nil, changeIsPositive: nil),
+        breakEvenInflation: MacroMetric(title: "Break-Even Inflation", subtitle: "10Y BE", value: "—", change: nil, changeIsPositive: nil)
     )
 }
 

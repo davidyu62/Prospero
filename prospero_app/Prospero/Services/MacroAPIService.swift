@@ -70,6 +70,35 @@ class MacroAPIService {
             throw error
         }
     }
+
+    /// 30일(기본) 범위 데이터 조회. 실패 시 호출부에서 스텁으로 폴백한다.
+    /// 매크로 범위 조회.
+    /// - months 지정 시: 최근 months개월의 '각 달 1일' 데이터(월 단위 그래프용).
+    /// - 아니면: 과거 days일 일 단위.
+    func fetchMacroRange(date: String, days: Int = 30, months: Int? = nil) async throws -> MacroRangeResponse {
+        let query: String
+        if let months = months {
+            query = "months=\(months)"
+        } else {
+            query = "days=\(days)"
+        }
+        let urlString = "\(baseURL)/api/macro-data/db/range?date=\(date)&\(query)"
+        print("🌐 Macro 범위 API URL: \(urlString)")
+
+        guard let url = URL(string: urlString) else {
+            throw APIError.invalidURL
+        }
+
+        let (data, response) = try await URLSession.shared.data(from: url)
+
+        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+            let code = (response as? HTTPURLResponse)?.statusCode ?? -1
+            print("❌ Macro 범위 API 실패: HTTP \(code)")
+            throw APIError.invalidResponse
+        }
+
+        return try JSONDecoder().decode(MacroRangeResponse.self, from: data)
+    }
 }
 
 
