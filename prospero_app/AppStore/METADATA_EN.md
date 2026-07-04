@@ -110,6 +110,19 @@ Thanks for trying Prospero. We'd love your feedback!
 
 ---
 
+## Copyright (저작권) — App Store Connect "Copyright" 필드
+
+App Store Connect의 **Copyright** 입력란에 그대로 넣으세요. (권리를 취득한 연도 + 소유 주체 표기)
+
+```
+© 2026 Prospero. All rights reserved.
+```
+
+> Apple은 목록에 `© 2026 Prospero` 형태로 표시합니다. `©` 기호는 생략해도 자동 표기되며,
+> 최초 배포 연도(2026)는 매년 그대로 유지하는 것이 일반적입니다.
+
+---
+
 ## Category (카테고리)
 - **Primary**: Finance
 - **Secondary (선택)**: Business 또는 News
