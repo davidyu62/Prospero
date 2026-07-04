@@ -112,14 +112,15 @@ Thanks for trying Prospero. We'd love your feedback!
 
 ## Copyright (저작권) — App Store Connect "Copyright" 필드
 
-App Store Connect의 **Copyright** 입력란에 그대로 넣으세요. (권리를 취득한 연도 + 소유 주체 표기)
+App Store Connect의 **Copyright** 입력란에 아래 텍스트를 그대로 넣으세요.
+**URL이 아니라 일반 텍스트**이며, 형식은 `연도 + 소유자 이름`입니다 (Apple 예시: `2008 Acme Inc.`).
 
 ```
-© 2026 Prospero. All rights reserved.
+2026 Prospero
 ```
 
-> Apple은 목록에 `© 2026 Prospero` 형태로 표시합니다. `©` 기호는 생략해도 자동 표기되며,
-> 최초 배포 연도(2026)는 매년 그대로 유지하는 것이 일반적입니다.
+> `©` 기호나 "All rights reserved." 없이 위처럼 입력합니다(Apple이 표시할 때 © 를 자동으로 붙입니다).
+> **URL은 넣지 마세요.** 최초 배포 연도(2026)는 매년 그대로 유지하는 것이 일반적입니다.
 
 ---
 
