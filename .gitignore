@@ -12,6 +12,12 @@ DerivedData/
 *.xcscmblueprint
 build/
 
+# IDE (IntelliJ / etc.)
+.idea/
+*.iml
+*.iws
+*.ipr
+
 # Python
 __pycache__/
 *.py[cod]
